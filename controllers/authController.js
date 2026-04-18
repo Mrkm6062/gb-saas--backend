@@ -1,41 +1,38 @@
 import User from "../models/User.js";
 import Store from "../models/Store.js";
 import generateToken from "../utils/generateToken.js";
+import bcrypt from "bcrypt";
 
 // REGISTER USER + CREATE STORE
 export const registerUser = async (req, res) => {
   try {
-    const { name, email, password, storeName } = req.body;
+    const { name, email, password } = req.body;
 
-    // Check user exists
-    const userExists = await User.findOne({ email });
+    // 1. Validation to prevent crashes on undefined
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "Please provide all required fields" });
+    }
+
+    const normalizedEmail = email.toLowerCase();
+
+    // 2. Check if user already exists
+    const userExists = await User.findOne({ email: normalizedEmail });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // Check subdomain availability
-    const subdomain = storeName.toLowerCase().replace(/\s+/g, "");
-    const storeExists = await Store.findOne({ subdomain });
-
-    if (storeExists) {
-      return res.status(400).json({ message: "Store name already taken" });
-    }
+    // 3. Hash the password before saving
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
     // Create user
-    const user = await User.create({ name, email, password });
-
-    // Create store
-    const store = await Store.create({
-      name: storeName,
-      subdomain,
-      owner: user._id,
-    });
+    const user = await User.create({ name, email: normalizedEmail, password: hashedPassword });
 
     res.status(201).json({
       _id: user._id,
       name: user.name,
       email: user.email,
-      store: store.subdomain,
+      user: { stores: [] }, // Return empty stores array for dashboard
       token: generateToken(user._id),
     });
   } catch (error) {
@@ -48,16 +45,23 @@ export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    if (!email || !password) {
+      return res.status(400).json({ message: "Please provide email and password" });
+    }
 
-    if (user && (await user.matchPassword(password))) {
-      const store = await Store.findOne({ owner: user._id });
+    const normalizedEmail = email.toLowerCase();
+
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (user && (await bcrypt.compare(password, user.password))) {
+      // Find all stores owned by this user
+      const stores = await Store.find({ ownerId: user._id });
 
       res.json({
         _id: user._id,
         name: user.name,
         email: user.email,
-        store: store?.subdomain,
+        user: { stores }, // Return array of stores for the dashboard
         token: generateToken(user._id),
       });
     } else {

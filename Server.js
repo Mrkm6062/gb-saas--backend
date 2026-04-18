@@ -12,6 +12,7 @@ import productRoutes from "./routes/productRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 
+
 dotenv.config();
 connectDB();
 
@@ -21,20 +22,27 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// 🔥 MULTI-TENANT MIDDLEWARE (GLOBAL)
-app.use(storeMiddleware);
-
-// Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/store", storeRoutes);
-app.use("/api/products", productRoutes);
-app.use("/api/orders", orderRoutes);
-app.use("/api/payment", paymentRoutes);
-
 // Root check
 app.get("/", (req, res) => {
   res.send("API Running...");
 });
+
+// Status check for frontend
+app.get("/api/status", (req, res) => {
+  res.status(200).json({ message: "API connection is successful!" });
+});
+
+// 🚀 GLOBAL ROUTES (No store context required)
+app.use("/api/auth", authRoutes); // Users can login/register
+app.use("/api/store", storeRoutes); // Users can create/manage their stores
+
+// 🔥 MULTI-TENANT MIDDLEWARE (GLOBAL)
+app.use(storeMiddleware);
+
+// Routes
+app.use("/api/products", productRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/payment", paymentRoutes);
 
 // Error fallback
 app.use((req, res) => {
