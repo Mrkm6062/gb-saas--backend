@@ -3,7 +3,8 @@ import dotenv from "dotenv";
 import cors from "cors";
 
 import connectDB from "./config/db.js";
-import storeMiddleware from "./middleware/storeMiddleware.js";
+import { subdomainMiddleware } from "./middleware/subdomain.js";
+import { storeResolver } from "./middleware/storeResolver.js";
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
@@ -36,8 +37,9 @@ app.get("/api/status", (req, res) => {
 app.use("/api/auth", authRoutes); // Users can login/register
 app.use("/api/store", storeRoutes); // Users can create/manage their stores
 
-// 🔥 MULTI-TENANT MIDDLEWARE (GLOBAL)
-app.use(storeMiddleware);
+// 🔥 MULTI-TENANT MIDDLEWARE (GLOBAL FOR BELOW ROUTES)
+app.use(subdomainMiddleware);
+app.use(storeResolver);
 
 // Routes
 app.use("/api/products", productRoutes);
