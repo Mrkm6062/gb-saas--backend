@@ -1,7 +1,6 @@
 import User from "../models/User.js";
 import Store from "../models/Store.js";
 import generateToken from "../utils/generateToken.js";
-import bcrypt from "bcrypt";
 
 // REGISTER USER + CREATE STORE
 export const registerUser = async (req, res) => {
@@ -49,7 +48,7 @@ export const loginUser = async (req, res) => {
 
     const user = await User.findOne({ email: normalizedEmail });
 
-    if (user && (await bcrypt.compare(password, user.password))) {
+    if (user && (await user.matchPassword(password))) {
       // Find all stores owned by this user
       const stores = await Store.find({ ownerId: user._id });
 
