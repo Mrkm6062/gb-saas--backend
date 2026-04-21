@@ -1,6 +1,17 @@
 // Extracts the subdomain from the host header for multi-tenant routing
 export const subdomainMiddleware = (req, res, next) => {
-  const host = req.headers.host || "";
+  // 1. Prioritize Origin header for cross-origin AJAX requests from the storefront
+  let host = req.headers.host || "";
+  
+  if (req.headers.origin) {
+    try {
+      const originUrl = new URL(req.headers.origin);
+      host = originUrl.host;
+    } catch (e) {
+      // Ignore parse errors
+    }
+  }
+
   // Remove port if testing locally
   const hostname = host.split(":")[0];
 
