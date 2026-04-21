@@ -14,8 +14,8 @@ router.put("/:id", protect, updateStore); // Maps PUT requests to update store d
 // Tenant API Routes (Using /tenant prefix to avoid conflicts with /:subdomain)
 router.get("/tenant/info", subdomainMiddleware, storeResolver, (req, res) => {
   // Return current store details
-  const { storeName, logo, banner, theme } = req.store;
-  res.json({ name: storeName, logo, banner, theme });
+  const { storeName, logo, banner, theme, favicon, websiteTitle, metaDescription, subdomain } = req.store;
+  res.json({ name: storeName, logo, banner, theme, favicon, websiteTitle, metaDescription, subdomain });
 });
 
 router.get("/tenant/products", subdomainMiddleware, storeResolver, async (req, res) => {
