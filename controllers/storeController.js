@@ -1,4 +1,5 @@
 import Store from "../models/Store.js";
+import Counter from "../models/Counter.js";
 
 // CREATE NEW STORE
 export const createStore = async (req, res) => {
@@ -18,16 +19,20 @@ export const createStore = async (req, res) => {
       return res.status(400).json({ message: "Store name is already taken. Try another." });
     }
 
-    // Generate Store Code (e.g., GBS001, GBS002)
-    const totalStores = await Store.countDocuments();
-    const storeId = `GBS${String(totalStores + 1).padStart(3, '0')}`;
+    // Safely generate Store Code using an atomic counter to prevent race conditions
+    const counter = await Counter.findOneAndUpdate(
+      { _id: 'storeId' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    const storeId = `GBS${String(counter.seq).padStart(3, '0')}`;
 
     // Calculate Plan Expiry Date (e.g., 30 days from creation)
     const planStartDate = new Date();
     const planExpiryDate = new Date();
     planExpiryDate.setDate(planExpiryDate.getDate() + 30);
 
-    if (!req.user || !req.user._id) {
+    if (!req.user || !req.user.userId) {
       return res.status(401).json({ message: "Unauthorized. User context is missing." });
     }
 
@@ -36,7 +41,7 @@ export const createStore = async (req, res) => {
       storeSlug,
       subdomain: `${storeSlug}.galibrand.cloud`,
       storeId,
-      ownerId: req.user._id, // Attached securely by the 'protect' middleware
+      ownerId: req.user.userId, // Attached securely by the 'protect' middleware
       category,
       metaDescription,
       status: 'active',
@@ -58,7 +63,7 @@ export const updateStore = async (req, res) => {
     const { storeName, websiteTitle, logo, favicon } = req.body;
 
     // Ensure the store belongs to the authenticated user
-    const query = { ownerId: req.user._id };
+    const query = { ownerId: req.user.userId };
     if (id.match(/^[0-9a-fA-F]{24}$/)) {
       query._id = id;
     } else {
@@ -90,7 +95,7 @@ export const updateStore = async (req, res) => {
 export const getMyStore = async (req, res) => {
   try {
     // Find all stores owned by the user
-    const stores = await Store.find({ ownerId: req.user._id });
+    const stores = await Store.find({ ownerId: req.user.userId });
     
     // Always return a 200 OK with the stores array, even if empty
     res.json({ stores });

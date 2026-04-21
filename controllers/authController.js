@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import Store from "../models/Store.js";
 import generateToken from "../utils/generateToken.js";
+import Counter from "../models/Counter.js";
 
 // REGISTER USER + CREATE STORE
 export const registerUser = async (req, res) => {
@@ -20,11 +21,20 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
+    // Safely generate custom User ID using an atomic counter to prevent race conditions
+    const counter = await Counter.findOneAndUpdate(
+      { _id: 'userId' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    const userId = `GBUSER${String(counter.seq).padStart(3, '0')}`;
+
     // Create user
-    const user = await User.create({ name, email: normalizedEmail, password });
+    const user = await User.create({ userId, name, email: normalizedEmail, password });
 
     res.status(201).json({
       _id: user._id,
+      userId: user.userId,
       name: user.name,
       email: user.email,
       user: { stores: [] }, // Return empty stores array for dashboard
@@ -50,10 +60,11 @@ export const loginUser = async (req, res) => {
 
     if (user && (await user.matchPassword(password))) {
       // Find all stores owned by this user
-      const stores = await Store.find({ ownerId: user._id });
+      const stores = await Store.find({ ownerId: user.userId });
 
       res.json({
         _id: user._id,
+        userId: user.userId,
         name: user.name,
         email: user.email,
         user: { stores }, // Return array of stores for the dashboard
