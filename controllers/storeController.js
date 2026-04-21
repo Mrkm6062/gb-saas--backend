@@ -51,6 +51,40 @@ export const createStore = async (req, res) => {
   }
 };
 
+// UPDATE STORE DETAILS (Logo, Favicon, Title, etc.)
+export const updateStore = async (req, res) => {
+  try {
+    const { id } = req.params; // Can be MongoDB _id or custom storeId (e.g., GBS001)
+    const { storeName, websiteTitle, logo, favicon } = req.body;
+
+    // Ensure the store belongs to the authenticated user
+    const query = { ownerId: req.user._id };
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      query._id = id;
+    } else {
+      query.storeId = id;
+    }
+
+    const store = await Store.findOne(query);
+
+    if (!store) {
+      return res.status(404).json({ message: "Store not found or unauthorized" });
+    }
+
+    // Update fields if they are provided in the request payload
+    if (storeName !== undefined) store.storeName = storeName;
+    if (websiteTitle !== undefined) store.websiteTitle = websiteTitle;
+    if (logo !== undefined) store.logo = logo;
+    if (favicon !== undefined) store.favicon = favicon;
+
+    await store.save();
+
+    res.json({ message: "Store updated successfully!", store });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
 // GET CURRENT STORE
 export const getMyStore = async (req, res) => {

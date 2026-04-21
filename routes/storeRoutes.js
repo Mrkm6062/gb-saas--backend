@@ -1,5 +1,5 @@
 import express from "express";
-import { createStore, getMyStore, getStoreBySubdomain } from "../controllers/storeController.js";
+import { createStore, getMyStore, getStoreBySubdomain, updateStore } from "../controllers/storeController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { subdomainMiddleware } from "../middleware/subdomain.js";
 import { storeResolver } from "../middleware/storeResolver.js";
@@ -9,6 +9,7 @@ const router = express.Router();
 
 router.post("/", protect, createStore); // <--- This maps the frontend to the new controller
 router.get("/me", protect, getMyStore);
+router.put("/:id", protect, updateStore); // Maps PUT requests to update store details
 
 // Tenant API Routes (Using /tenant prefix to avoid conflicts with /:subdomain)
 router.get("/tenant/info", subdomainMiddleware, storeResolver, (req, res) => {
