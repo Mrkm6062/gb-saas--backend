@@ -15,7 +15,10 @@ export const subdomainMiddleware = (req, res, next) => {
   // Remove port if testing locally
   const hostname = host.split(":")[0];
 
+  // Allow dynamic domain from env, and add support for nip.io testing
   const rootDomains = ["galibrand.cloud", "localhost"];
+  if (process.env.ROOT_DOMAIN) rootDomains.push(process.env.ROOT_DOMAIN);
+
   const ignoredSubdomains = ["api", "dashboard", "www"];
 
   let subdomain = null;
@@ -28,7 +31,15 @@ export const subdomainMiddleware = (req, res, next) => {
     }
   }
 
+  // Fallback for nip.io testing on VPS (e.g., sabjiwala.123.45.67.89.nip.io)
+  if (!subdomain && hostname.endsWith(".nip.io")) {
+    subdomain = hostname.split(".")[0];
+  }
+
   // Ignore specific subdomains (like api or dashboard) or if no subdomain exists
   req.subdomain = !subdomain || ignoredSubdomains.includes(subdomain) ? null : subdomain;
+
+  console.log(`[Subdomain] Host: ${host} | Hostname: ${hostname} | Detected: ${req.subdomain}`);
+
   next();
 };
