@@ -7,6 +7,7 @@ const storeSchema = new mongoose.Schema({
   storeName: { type: String, required: true },
   subdomain: { type: String },
   category: { type: String },
+  storeType: { type: String },
   metaDescription: { type: String },
   status: { type: String, default: "active" },
   planStartDate: { type: Date },

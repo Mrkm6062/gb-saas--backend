@@ -4,7 +4,7 @@ import Counter from "../models/Counter.js";
 // CREATE NEW STORE
 export const createStore = async (req, res) => {
   try {
-    const { name, category, metaDescription } = req.body;
+    const { name, category, storeType, metaDescription } = req.body;
 
     // Prevent undefined.toLowerCase() crash
     if (!name || typeof name !== 'string') {
@@ -60,7 +60,7 @@ export const createStore = async (req, res) => {
 export const updateStore = async (req, res) => {
   try {
     const { id } = req.params; // Can be MongoDB _id or custom storeId (e.g., GBS001)
-    const { storeName, websiteTitle, logo, favicon } = req.body;
+    const { storeName, websiteTitle, logo, favicon, category, storeType } = req.body;
 
     // Ensure the store belongs to the authenticated user
     const query = { ownerId: req.user.userId };
@@ -81,6 +81,8 @@ export const updateStore = async (req, res) => {
     if (websiteTitle !== undefined) store.websiteTitle = websiteTitle;
     if (logo !== undefined) store.logo = logo;
     if (favicon !== undefined) store.favicon = favicon;
+    if (category !== undefined) store.category = category;
+    if (storeType !== undefined) store.storeType = storeType;
 
     await store.save();
 
