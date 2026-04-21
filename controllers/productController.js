@@ -1,12 +1,18 @@
 import Product from "../models/Product.js";
+import Store from "../models/Store.js";
 
 // CREATE PRODUCT
 export const createProduct = async (req, res) => {
   try {
-    const { name, price, stock } = req.body;
+    const { name, price, stock, storeId } = req.body;
+
+    const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId });
+    if (!store) {
+      return res.status(403).json({ message: "Not authorized to add products to this store" });
+    }
 
     const product = await Product.create({
-      storeId: req.store._id,
+      storeId,
       name,
       price,
       stock,
@@ -21,7 +27,14 @@ export const createProduct = async (req, res) => {
 // GET ALL PRODUCTS (STORE BASED)
 export const getProducts = async (req, res) => {
   try {
-    const products = await Product.find({ storeId: req.store._id });
+    const { storeId } = req.query;
+
+    const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId });
+    if (!store) {
+      return res.status(403).json({ message: "Not authorized to view these products" });
+    }
+
+    const products = await Product.find({ storeId });
 
     res.json(products);
   } catch (error) {
@@ -32,18 +45,19 @@ export const getProducts = async (req, res) => {
 // UPDATE PRODUCT
 export const updateProduct = async (req, res) => {
   try {
-    const product = await Product.findOne({
-      _id: req.params.id,
-      storeId: req.store._id,
-    });
-
+    const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
 
+    const store = await Store.findOne({ _id: product.storeId, ownerId: req.user.userId });
+    if (!store) {
+      return res.status(403).json({ message: "Not authorized to update this product" });
+    }
+
     product.name = req.body.name || product.name;
     product.price = req.body.price || product.price;
-    product.stock = req.body.stock || product.stock;
+    product.stock = req.body.stock !== undefined ? req.body.stock : product.stock;
 
     const updated = await product.save();
 
@@ -56,13 +70,14 @@ export const updateProduct = async (req, res) => {
 // DELETE PRODUCT
 export const deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findOne({
-      _id: req.params.id,
-      storeId: req.store._id,
-    });
-
+    const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
+    }
+
+    const store = await Store.findOne({ _id: product.storeId, ownerId: req.user.userId });
+    if (!store) {
+      return res.status(403).json({ message: "Not authorized to delete this product" });
     }
 
     await product.deleteOne();

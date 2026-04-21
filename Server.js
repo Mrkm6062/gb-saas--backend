@@ -36,13 +36,13 @@ app.get("/api/status", (req, res) => {
 // 🚀 GLOBAL ROUTES (No store context required)
 app.use("/api/auth", authRoutes); // Users can login/register
 app.use("/api/store", storeRoutes); // Users can create/manage their stores
+app.use("/api/products", productRoutes); // Admin product management
 
 // 🔥 MULTI-TENANT MIDDLEWARE (GLOBAL FOR BELOW ROUTES)
 app.use(subdomainMiddleware);
 app.use(storeResolver);
 
 // Routes
-app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payment", paymentRoutes);
 
