@@ -89,13 +89,11 @@ export const updateStore = async (req, res) => {
 // GET CURRENT STORE
 export const getMyStore = async (req, res) => {
   try {
-    const store = await Store.findOne({ ownerId: req.user._id });
-
-    if (!store) {
-      return res.status(404).json({ message: "Store not found" });
-    }
-
-    res.json(store);
+    // Find all stores owned by the user
+    const stores = await Store.find({ ownerId: req.user._id });
+    
+    // Always return a 200 OK with the stores array, even if empty
+    res.json({ stores });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
