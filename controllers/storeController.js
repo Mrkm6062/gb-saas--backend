@@ -5,7 +5,7 @@ import Plan from "../models/Plan.js";
 // CREATE NEW STORE
 export const createStore = async (req, res) => {
   try {
-    const { name, category, storeType, metaDescription } = req.body;
+    const { name, category, storeType, metaDescription, planId } = req.body;
 
     // Prevent undefined.toLowerCase() crash
     if (!name || typeof name !== 'string') {
@@ -46,6 +46,7 @@ export const createStore = async (req, res) => {
       category,
       metaDescription,
       status: 'active',
+      planId: planId || null,
       planStartDate,
       planExpiryDate,
       isTrialActive: true
