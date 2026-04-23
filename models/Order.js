@@ -11,7 +11,15 @@ const orderSchema = new mongoose.Schema(
     customerName: String,
     customerEmail: String,
     customerPhone: String,
-    address: String,
+    address: {
+      addressLine1: String,
+      landmark: String,
+      city: String,
+      state: String,
+      pincode: String,
+      mobileNumber: String,
+      alternateNumber: String,
+    },
 
     orderItems: [
       {
@@ -40,4 +48,4 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("Order", orderSchema);
+export default mongoose.models.Order || mongoose.model("Order", orderSchema);
