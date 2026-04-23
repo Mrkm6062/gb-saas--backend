@@ -1,5 +1,6 @@
 import Store from "../models/Store.js";
 import Counter from "../models/Counter.js";
+import Plan from "../models/Plan.js";
 
 // CREATE NEW STORE
 export const createStore = async (req, res) => {
@@ -92,6 +93,36 @@ export const updateStore = async (req, res) => {
   }
 };
 
+// UPGRADE STORE PLAN (User protected)
+export const upgradeStorePlan = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { planId } = req.body;
+
+    // Ensure the store belongs to the authenticated user
+    const store = await Store.findOne({ _id: id, ownerId: req.user.userId });
+    if (!store) {
+      return res.status(404).json({ message: "Store not found or unauthorized" });
+    }
+
+    const plan = await Plan.findById(planId);
+    if (!plan) {
+      return res.status(404).json({ message: "Selected plan not found" });
+    }
+
+    // Apply the new plan
+    store.planId = planId;
+    store.subscriptionStatus = 'active';
+    store.isTrialActive = false;
+    store.planStartDate = new Date();
+    store.planExpiryDate = new Date(new Date().setDate(new Date().getDate() + 30)); // Adds 30 days
+
+    await store.save();
+    res.json({ message: "Plan upgraded successfully!", store });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 // GET CURRENT STORE
 export const getMyStore = async (req, res) => {

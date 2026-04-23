@@ -10,6 +10,8 @@ const storeSchema = new mongoose.Schema({
   storeType: { type: String },
   metaDescription: { type: String },
   status: { type: String, default: "active" },
+  subscriptionStatus: { type: String, enum: ['active', 'expired', 'trial'], default: 'trial' },
+  planId: { type: mongoose.Schema.Types.ObjectId, ref: "Plan" },
   planStartDate: { type: Date },
   planExpiryDate: { type: Date },
   isTrialActive: { type: Boolean, default: true },

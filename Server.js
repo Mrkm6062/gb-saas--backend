@@ -13,6 +13,7 @@ import productRoutes from "./routes/productRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import superadminRoutes from "./routes/superadminRoutes.js";
+import planRoutes from "./routes/planRoutes.js";
 import User from "./models/User.js";
 
 
@@ -60,6 +61,7 @@ app.use("/api/auth", authRoutes); // Users can login/register
 app.use("/api/store", storeRoutes); // Users can create/manage their stores
 app.use("/api/products", productRoutes); // Admin product management
 app.use("/api/superadmin", superadminRoutes); // Superadmin access
+app.use("/api/plans", planRoutes); // Public plan fetching
 
 // 🔥 MULTI-TENANT MIDDLEWARE (GLOBAL FOR BELOW ROUTES)
 app.use(subdomainMiddleware);

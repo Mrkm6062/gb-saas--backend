@@ -6,9 +6,22 @@ export const createProduct = async (req, res) => {
   try {
     const { name, price, stock, storeId } = req.body;
 
-    const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId });
+    const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId }).populate('planId');
     if (!store) {
       return res.status(403).json({ message: "Not authorized to add products to this store" });
+    }
+
+    // 1. Subscription Check
+    if (store.subscriptionStatus === 'expired') {
+      return res.status(403).json({ message: "Subscription expired. Please upgrade your plan to add products." });
+    }
+
+    // 2. Plan Limit Feature Enforcement
+    if (store.planId) {
+      const productCount = await Product.countDocuments({ storeId });
+      if (productCount >= store.planId.features.maxProducts) {
+        return res.status(403).json({ message: `Plan limit reached. Maximum ${store.planId.features.maxProducts} products allowed.` });
+      }
     }
 
     const product = await Product.create({
