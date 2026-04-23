@@ -19,7 +19,7 @@ export const subdomainMiddleware = (req, res, next) => {
   const rootDomains = ["galibrand.cloud", "localhost"];
   if (process.env.ROOT_DOMAIN) rootDomains.push(process.env.ROOT_DOMAIN);
 
-  const ignoredSubdomains = ["api", "dashboard", "www"];
+  const ignoredSubdomains = ["api", "dashboard", "www", "superadmin"];
 
   let subdomain = null;
 
