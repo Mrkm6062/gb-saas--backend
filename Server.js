@@ -12,6 +12,8 @@ import storeRoutes from "./routes/storeRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import superadminRoutes from "./routes/superadminRoutes.js";
+import User from "./models/User.js";
 
 
 dotenv.config();
@@ -22,6 +24,26 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors());
+
+// Seed Superadmin Account
+const seedSuperAdmin = async () => {
+  try {
+    const adminExists = await User.findOne({ email: "galibrand99@gmail.com" });
+    if (!adminExists) {
+      await User.create({
+        userId: "GBSUPERADMIN",
+        name: "Super Admin",
+        email: "galibrand99@gmail.com",
+        password: "!rTMMeL0", // IMPORTANT: Change this password after first login!
+        role: "superadmin"
+      });
+      console.log("✅ Superadmin account seeded successfully.");
+    }
+  } catch (error) {
+    console.error("❌ Failed to seed superadmin:", error);
+  }
+};
+seedSuperAdmin();
 
 // Root check
 app.get("/", (req, res) => {
@@ -37,6 +59,7 @@ app.get("/api/status", (req, res) => {
 app.use("/api/auth", authRoutes); // Users can login/register
 app.use("/api/store", storeRoutes); // Users can create/manage their stores
 app.use("/api/products", productRoutes); // Admin product management
+app.use("/api/superadmin", superadminRoutes); // Superadmin access
 
 // 🔥 MULTI-TENANT MIDDLEWARE (GLOBAL FOR BELOW ROUTES)
 app.use(subdomainMiddleware);
