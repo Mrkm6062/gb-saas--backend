@@ -62,13 +62,13 @@ app.use("/api/store", storeRoutes); // Users can create/manage their stores
 app.use("/api/products", productRoutes); // Admin product management
 app.use("/api/superadmin", superadminRoutes); // Superadmin access
 app.use("/api/plans", planRoutes); // Public plan fetching
+app.use("/api/orders", orderRoutes); // Orders (handles both storefront & admin)
 
 // 🔥 MULTI-TENANT MIDDLEWARE (GLOBAL FOR BELOW ROUTES)
 app.use(subdomainMiddleware);
 app.use(storeResolver);
 
 // Routes
-app.use("/api/orders", orderRoutes);
 app.use("/api/payment", paymentRoutes);
 
 // Error fallback
