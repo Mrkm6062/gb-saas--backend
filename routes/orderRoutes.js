@@ -1,19 +1,15 @@
 import express from "express";
-import {
-  createOrder,
-  getOrders,
-  updateOrderStatus,
-} from "../controllers/orderController.js";
-
+import { createOrder, getOrders, updateOrderStatus } from "../controllers/orderController.js";
 import { protect } from "../middleware/authMiddleware.js";
+import { subdomainMiddleware } from "../middleware/subdomain.js";
 
 const router = express.Router();
 
-// PUBLIC (storefront checkout)
-router.post("/", createOrder);
+// Public storefront route (protected by subdomain detection)
+router.post("/", subdomainMiddleware, createOrder);
 
-// DASHBOARD (owner only)
+// Admin dashboard routes (protected by JWT authentication)
 router.get("/", protect, getOrders);
-router.put("/:id", protect, updateOrderStatus);
+router.put("/:id/status", protect, updateOrderStatus);
 
 export default router;
