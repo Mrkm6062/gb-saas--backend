@@ -11,7 +11,7 @@ const router = express.Router();
 
 router.route("/")
   .post(protect, createProduct)
-  .get(getProducts);
+  .get(protect, getProducts);
 
 router.route("/:id")
   .put(protect, updateProduct)

@@ -6,6 +6,10 @@ export const createProduct = async (req, res) => {
   try {
     const { name, price, stock, storeId } = req.body;
 
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ message: "Unauthorized: User context is missing." });
+    }
+
     const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId }).populate('planId');
     if (!store) {
       return res.status(403).json({ message: "Not authorized to add products to this store" });
@@ -42,6 +46,14 @@ export const getProducts = async (req, res) => {
   try {
     const { storeId } = req.query;
 
+    if (!storeId) {
+      return res.status(400).json({ message: "storeId query parameter is required." });
+    }
+
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ message: "Unauthorized: User context is missing." });
+    }
+
     const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId });
     if (!store) {
       return res.status(403).json({ message: "Not authorized to view these products" });
@@ -51,6 +63,7 @@ export const getProducts = async (req, res) => {
 
     res.json(products);
   } catch (error) {
+    console.error("Error fetching products:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -58,6 +71,10 @@ export const getProducts = async (req, res) => {
 // UPDATE PRODUCT
 export const updateProduct = async (req, res) => {
   try {
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ message: "Unauthorized: User context is missing." });
+    }
+
     const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
@@ -83,6 +100,10 @@ export const updateProduct = async (req, res) => {
 // DELETE PRODUCT
 export const deleteProduct = async (req, res) => {
   try {
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ message: "Unauthorized: User context is missing." });
+    }
+
     const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
