@@ -37,6 +37,28 @@ export const createOrder = async (req, res) => {
       orderStatus: "placed"
     });
 
+    // Deduct stock for each ordered item
+    for (const item of orderItems) {
+      if (item.variantId) {
+        // Deduct from specific variant AND total stock
+        await Product.updateOne(
+          { _id: item.product, "variants._id": item.variantId },
+          {
+            $inc: {
+              "variants.$.stock": -item.qty,
+              totalStock: -item.qty
+            }
+          }
+        );
+      } else {
+        // Deduct only from total stock (no variants)
+        await Product.updateOne(
+          { _id: item.product },
+          { $inc: { totalStock: -item.qty } }
+        );
+      }
+    }
+
     res.status(201).json(order);
   } catch (error) {
     res.status(500).json({ message: error.message });

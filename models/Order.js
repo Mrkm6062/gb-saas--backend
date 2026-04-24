@@ -27,6 +27,7 @@ const orderSchema = new mongoose.Schema(
           type: mongoose.Schema.Types.ObjectId,
           ref: "Product",
         },
+        variantId: String,
         name: String,
         price: Number,
         qty: Number,
