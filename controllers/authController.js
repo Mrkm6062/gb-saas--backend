@@ -3,6 +3,9 @@ import Store from "../models/Store.js";
 import generateToken from "../utils/generateToken.js";
 import Counter from "../models/Counter.js";
 import nodemailer from "nodemailer";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 // Setup Nodemailer transporter
 const transporter = nodemailer.createTransport({
