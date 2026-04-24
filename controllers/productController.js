@@ -4,7 +4,11 @@ import Store from "../models/Store.js";
 // CREATE PRODUCT
 export const createProduct = async (req, res) => {
   try {
-    const { name, price, stock, storeId } = req.body;
+    const { 
+      name, storeId, description, category, subCategory, 
+      images, variants, basePrice, unitType, tags, totalStock, isActive, seo,
+      price, stock // Legacy fallbacks
+    } = req.body;
 
     if (!req.user || !req.user.userId) {
       return res.status(401).json({ message: "Unauthorized: User context is missing." });
@@ -28,11 +32,33 @@ export const createProduct = async (req, res) => {
       }
     }
 
+    // 3. Generate a unique SEO slug
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now();
+
+    // 4. Calculate total stock (sum of variants, or fallback to provided totals)
+    let calculatedTotalStock = totalStock !== undefined ? totalStock : (stock || 0);
+    if (variants && variants.length > 0) {
+      calculatedTotalStock = variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+    }
+
+    // 5. Determine base price
+    const calculatedBasePrice = basePrice !== undefined ? basePrice : (price || (variants && variants.length > 0 ? variants[0].price : 0));
+
     const product = await Product.create({
       storeId,
       name,
-      price,
-      stock,
+      slug,
+      description,
+      category,
+      subCategory,
+      images: images || [],
+      variants: variants || [],
+      basePrice: calculatedBasePrice,
+      unitType,
+      tags: tags || [],
+      totalStock: calculatedTotalStock,
+      isActive: isActive !== undefined ? isActive : true,
+      seo
     });
 
     res.status(201).json(product);
@@ -85,9 +111,30 @@ export const updateProduct = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to update this product" });
     }
 
-    product.name = req.body.name || product.name;
-    product.price = req.body.price || product.price;
-    product.stock = req.body.stock !== undefined ? req.body.stock : product.stock;
+    const { 
+      name, description, category, subCategory, images, variants, 
+      basePrice, unitType, tags, totalStock, isActive, seo,
+      price, stock // Legacy fallbacks
+    } = req.body;
+
+    if (name !== undefined) product.name = name;
+    if (description !== undefined) product.description = description;
+    if (category !== undefined) product.category = category;
+    if (subCategory !== undefined) product.subCategory = subCategory;
+    if (images !== undefined) product.images = images;
+    if (unitType !== undefined) product.unitType = unitType;
+    if (tags !== undefined) product.tags = tags;
+    if (isActive !== undefined) product.isActive = isActive;
+    if (seo !== undefined) product.seo = seo;
+
+    if (variants !== undefined) {
+      product.variants = variants;
+      product.totalStock = variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+      if (basePrice === undefined && variants.length > 0) product.basePrice = variants[0].price;
+    } else if (totalStock !== undefined || stock !== undefined) {
+      product.totalStock = totalStock !== undefined ? totalStock : stock;
+    }
+    if (basePrice !== undefined || price !== undefined) product.basePrice = basePrice !== undefined ? basePrice : price;
 
     const updated = await product.save();
 
