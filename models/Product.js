@@ -48,7 +48,7 @@ const productSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId, 
     ref: "Store", 
     required: true // Ensures product always belongs to a specific store
-  }
+  },
 
   // 🔹 IMAGES
   images: [String],
