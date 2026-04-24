@@ -9,7 +9,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
-    "@google-cloud/storage": "^5.18.3",
+    "@google-cloud/storage": "^7.10.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.6",
@@ -21,7 +21,7 @@
     "mongoose": "^7.0.3",
     "multer": "^2.0.2",
     "node-fetch": "^3.3.2",
-    "nodemailer": "^8.0.5",
+    "nodemailer": "^8.0.6",
     "nohtml": "^1.0.4",
     "razorpay": "^2.9.6",
     "serverless-http": "^3.2.0",
@@ -29,6 +29,10 @@
     "web-push": "^3.6.7",
     "zod": "^4.1.12"
   },
+  "overrides": {
+  "@tootallnate/once": "^3.0.1",
+  "uuid": "^14.0.0"
+   },
   "devDependencies": {
     "nodemon": "^3.1.10"
   }
