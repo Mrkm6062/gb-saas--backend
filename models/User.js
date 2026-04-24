@@ -8,6 +8,8 @@ const userSchema = new mongoose.Schema(
     email: { type: String, unique: true },
     password: String,
     role: { type: String, enum: ['user', 'superadmin'], default: 'user' },
+    otp: String,
+    otpExpiry: Date,
   },
   { timestamps: true }
 );
