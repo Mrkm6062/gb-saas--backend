@@ -42,12 +42,12 @@ export const uploadImages = async (req, res) => {
         contentType = 'image/webp';
         extension = 'webp';
       } else {
-        // Convert other image formats to .avif
+        // Convert other image formats to .webp for wider browser compatibility
         fileBuffer = await sharp(file.buffer)
-          .avif({ quality: 80 })
+          .webp({ quality: 80 })
           .toBuffer();
-        contentType = 'image/avif';
-        extension = 'avif';
+        contentType = 'image/webp';
+        extension = 'webp';
       }
 
       const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}.${extension}`;
