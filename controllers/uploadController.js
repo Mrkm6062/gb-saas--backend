@@ -22,17 +22,40 @@ export const uploadImages = async (req, res) => {
     const uploadedUrls = [];
 
     for (const file of req.files) {
-      // Convert image to AVIF format
-      const avifBuffer = await sharp(file.buffer)
-        .avif({ quality: 80 })
-        .toBuffer();
+      let fileBuffer;
+      let contentType;
+      let extension;
 
-      const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}.avif`;
+      const originalName = file.originalname.toLowerCase();
+
+      // Check if file is .ico or .webp
+      if (originalName.endsWith('.ico') || file.mimetype === 'image/x-icon' || file.mimetype === 'image/vnd.microsoft.icon') {
+        // Skip sharp conversion for .ico as sharp doesn't support it natively
+        fileBuffer = file.buffer;
+        contentType = 'image/x-icon';
+        extension = 'ico';
+      } else if (originalName.endsWith('.webp') || file.mimetype === 'image/webp') {
+        // Optimize but keep as .webp
+        fileBuffer = await sharp(file.buffer)
+          .webp({ quality: 80 })
+          .toBuffer();
+        contentType = 'image/webp';
+        extension = 'webp';
+      } else {
+        // Convert other image formats to .avif
+        fileBuffer = await sharp(file.buffer)
+          .avif({ quality: 80 })
+          .toBuffer();
+        contentType = 'image/avif';
+        extension = 'avif';
+      }
+
+      const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}.${extension}`;
       const gcsFilePath = `${storeFolder}/products/${filename}`;
       const blob = bucket.file(gcsFilePath);
 
-      await blob.save(avifBuffer, {
-        metadata: { contentType: "image/avif" },
+      await blob.save(fileBuffer, {
+        metadata: { contentType: contentType },
         resumable: false,
       });
 
