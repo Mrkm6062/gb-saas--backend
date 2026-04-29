@@ -17,6 +17,7 @@ import planRoutes from "./routes/planRoutes.js";
 import User from "./models/User.js";
 import policyRoutes from "./routes/policyRoutes.js";
 import Policy from "./models/Policy.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 
 
 dotenv.config();
@@ -68,6 +69,7 @@ app.use("/api/superadmin", superadminRoutes); // Superadmin access
 app.use("/api/plans", planRoutes); // Public plan fetching
 app.use("/api/orders", orderRoutes); // Orders (handles both storefront & admin)
 app.use("/api/policies", policyRoutes); // Store policies (handles both storefront & admin)
+app.use("/api/upload", uploadRoutes); // Media uploads
 
 // 🔥 MULTI-TENANT MIDDLEWARE (GLOBAL FOR BELOW ROUTES)
 app.use(subdomainMiddleware);
