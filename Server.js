@@ -1,6 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+import helmet from "helmet";
 
 import connectDB from "./config/db.js";
 import { subdomainMiddleware } from "./middleware/subdomain.js";
@@ -32,6 +33,37 @@ app.set('trust proxy', 1);
 // Middleware
 app.use(express.json());
 app.use(cors());
+
+// Security Headers Middleware
+app.use(
+  helmet({
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+    },
+    frameguard: {
+      action: "sameorigin",
+    },
+    referrerPolicy: {
+      policy: "strict-origin-when-cross-origin",
+    },
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        imgSrc: ["'self'", "https://storage.googleapis.com", "data:"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        connectSrc: ["'self'", "https://*.galibrand.cloud"],
+      },
+    },
+  })
+);
+
+// Set Permissions-Policy manually as it is not fully managed by Helmet v6 natively
+app.use((req, res, next) => {
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  next();
+});
 
 // Seed Superadmin Account
 const seedSuperAdmin = async () => {
