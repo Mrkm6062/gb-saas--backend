@@ -55,7 +55,10 @@ export const uploadImages = async (req, res) => {
       const blob = bucket.file(gcsFilePath);
 
       await blob.save(fileBuffer, {
-        metadata: { contentType: contentType },
+        metadata: { 
+          contentType: contentType,
+          cacheControl: 'public, max-age=3600'
+        },
         resumable: false,
       });
 
