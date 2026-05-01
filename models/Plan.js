@@ -12,8 +12,8 @@ const planSchema = new mongoose.Schema({
     storeLimit: { type: Number, default: 1}, 
     freeSsl: { type: Boolean, default: false },
     securityHeaders: { type: Boolean, default: false },
-    basicanalytics: { type: Boolean, default: false },
-    advanceanalytics: { type: Boolean, default: false },
+    basicAnalytics: { type: Boolean, default: false },
+    advanceAnalytics: { type: Boolean, default: false },
     whatsappOrderButton: { type: Boolean, default: false },
     prioritySupport: { type: Boolean, default: false }
   }
