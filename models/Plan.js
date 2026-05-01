@@ -10,6 +10,11 @@ const planSchema = new mongoose.Schema({
     themes: { type: Boolean, default: false },
     storageLimit: { type: Number, default: 500 }, // Add this line! (500 = 500MB, 2000 = 2GB)
     storeLimit: { type: Number, default: 1}, 
+    freeSsl: { type: Boolean, default: false },
+    securityHeaders: { type: Boolean, default: false },
+    Basicanalytics: { type: Boolean, default: false },
+    Advanceanalytics: { type: Boolean, default: false },
+    whatsappOrderButton: { type: Boolean, default: false },
     prioritySupport: { type: Boolean, default: false }
   }
 }, {
