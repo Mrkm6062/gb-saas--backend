@@ -89,6 +89,8 @@ export const listImages = async (req, res) => {
     const images = files.map((file) => ({
       name: file.name,
       url: `https://storage.googleapis.com/${process.env.GCS_BUCKET}/${file.name}`,
+      size: parseInt(file.metadata.size || 0, 10),
+      createdAt: file.metadata.timeCreated
     }));
 
     res.status(200).json({ images });

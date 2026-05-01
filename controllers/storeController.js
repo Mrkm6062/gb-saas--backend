@@ -37,6 +37,22 @@ export const createStore = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized. User context is missing." });
     }
 
+    // Calculate how many stores the user is allowed to have based on their highest plan
+    const existingStores = await Store.find({ ownerId: req.user.userId }).populate('planId');
+    let maxStoresAllowed = 1; // Default fallback for free/new users
+    
+    for (const s of existingStores) {
+      if (s.planId && s.planId.features && s.planId.features.storeLimit) {
+        if (s.planId.features.storeLimit > maxStoresAllowed) {
+          maxStoresAllowed = s.planId.features.storeLimit;
+        }
+      }
+    }
+
+    if (existingStores.length >= maxStoresAllowed) {
+      return res.status(403).json({ message: `Store limit reached. Your current plan allows up to ${maxStoresAllowed} store(s). Please upgrade to create more.` });
+    }
+
     const store = await Store.create({
       storeName: name,
       storeSlug,
