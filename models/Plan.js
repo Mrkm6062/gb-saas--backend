@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const planSchema = new mongoose.Schema({
-  name: { type: String, required: true, enum: ['Basic', 'Pro', 'Premium'], unique: true },
+  name: { type: String, required: true, enum: ['Starter', 'Basic', 'Pro', 'Premium'], unique: true },
   price: { type: Number, required: true }, // Monthly price
   features: {
     maxProducts: { type: Number, required: true, default: 20 },
@@ -15,6 +15,7 @@ const planSchema = new mongoose.Schema({
     basicAnalytics: { type: Boolean, default: false },
     advanceAnalytics: { type: Boolean, default: false },
     whatsappOrderButton: { type: Boolean, default: false },
+    sevenDaysTrial: { type: Boolean, default: true },
     prioritySupport: { type: Boolean, default: false }
   }
 }, {

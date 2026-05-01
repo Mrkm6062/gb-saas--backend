@@ -28,10 +28,10 @@ export const createStore = async (req, res) => {
     );
     const storeId = `GBS${String(counter.seq).padStart(3, '0')}`;
 
-    // Calculate Plan Expiry Date (e.g., 30 days from creation)
+    // Calculate Plan Expiry Date (e.g., 7 days from creation)
     const planStartDate = new Date();
     const planExpiryDate = new Date();
-    planExpiryDate.setDate(planExpiryDate.getDate() + 30);
+    planExpiryDate.setDate(planExpiryDate.getDate() + 7);
 
     if (!req.user || !req.user.userId) {
       return res.status(401).json({ message: "Unauthorized. User context is missing." });
