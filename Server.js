@@ -2,6 +2,8 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import connectDB from "./config/db.js";
 import { subdomainMiddleware } from "./middleware/subdomain.js";
@@ -29,6 +31,9 @@ import domainRoutes from "./routes/domainRoutes.js";
 
 dotenv.config();
 connectDB();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
@@ -115,6 +120,15 @@ app.use("/api/domains", domainRoutes); // Custom domain manager
 
 // Routes
 app.use("/api/payment", paymentRoutes);
+
+// 🔥 SERVE REACT FRONTEND (Must be placed AFTER API routes)
+// Standard Vite build outputs to /dist. Change to /build if using CRA.
+const frontendPath = path.join(__dirname, "../store-frontend/dist");
+app.use(express.static(frontendPath));
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(frontendPath, "index.html"));
+});
 
 // Error fallback
 app.use((req, res) => {

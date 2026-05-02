@@ -37,26 +37,26 @@ export const storeResolver = async (req, res, next) => {
       }
     }
 
-    // THIRD -> If no store found
-    if (!store) {
-      return res.status(404).json({ message: "Store not found" });
+    // THIRD -> Attach store if found, else just continue safely
+    if (store) {
+      if (store.status === 'suspended') {
+        return res.status(403).json({ message: "This store has been temporarily suspended." });
+      }
+
+      // Automatically expire the subscription if the end date has passed
+      if (store.subscriptionStatus !== 'expired' && store.planExpiryDate && new Date() > store.planExpiryDate) {
+        store.subscriptionStatus = 'expired';
+        store.isTrialActive = false;
+        await store.save();
+      }
+
+      req.plan = store.planId; // Make plan details available to frontend API responses
+      req.store = store;
     }
 
-    if (store.status === 'suspended') {
-      return res.status(403).json({ message: "This store has been temporarily suspended." });
-    }
-
-    // Automatically expire the subscription if the end date has passed
-    if (store.subscriptionStatus !== 'expired' && store.planExpiryDate && new Date() > store.planExpiryDate) {
-      store.subscriptionStatus = 'expired';
-      store.isTrialActive = false;
-      await store.save();
-    }
-
-    req.plan = store.planId; // Make plan details available to frontend API responses
-    req.store = store;
     next();
   } catch (error) {
-    res.status(500).json({ message: "Internal server error during store resolution" });
+    console.error("Store resolver error:", error);
+    next(); // Always continue so static frontend can still load
   }
 };
