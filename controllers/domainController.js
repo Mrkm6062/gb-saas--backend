@@ -2,6 +2,7 @@ import Domain from "../models/Domain.js";
 import Store from "../models/Store.js";
 import crypto from "crypto";
 import dns from "dns";
+import { checkSSL } from "../utils/checkSSL.js";
 
 const TARGET_CNAME = "cname.galibrand.cloud";
 const TARGET_A_RECORD = "72.62.199.214";
@@ -75,6 +76,49 @@ export const addDomain = async (req, res) => {
         cnameRecord: { type: "CNAME", name: "www", value: TARGET_CNAME }
       }
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 5. GET DOMAIN STATUS
+export const getDomainStatus = async (req, res) => {
+  try {
+    const domainRecord = await Domain.findOne({ _id: req.params.id, userId: req.user._id });
+    if (!domainRecord) {
+      return res.status(404).json({ message: "Domain not found." });
+    }
+
+    res.json({
+      domain: domainRecord.domain,
+      status: domainRecord.status,
+      sslStatus: domainRecord.sslStatus
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 6. TRIGGER SSL CHECK
+export const checkDomainSSL = async (req, res) => {
+  try {
+    const domainRecord = await Domain.findOne({ _id: req.params.id, userId: req.user._id });
+    if (!domainRecord) {
+      return res.status(404).json({ message: "Domain not found." });
+    }
+
+    if (domainRecord.status !== "connected") {
+      domainRecord.sslStatus = "pending";
+      await domainRecord.save();
+      return res.json({ message: "Domain is not connected. Connect domain before checking SSL.", domain: domainRecord });
+    }
+
+    const newSslStatus = await checkSSL(domainRecord.domain);
+    
+    domainRecord.sslStatus = newSslStatus;
+    await domainRecord.save();
+
+    res.json({ message: "SSL Check completed.", domain: domainRecord });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
