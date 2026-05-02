@@ -14,6 +14,10 @@ export const storeResolver = async (req, res, next) => {
       return res.status(404).json({ message: "Store not found" });
     }
 
+    if (store.status === 'suspended') {
+      return res.status(403).json({ message: "This store has been temporarily suspended." });
+    }
+
     // Automatically expire the subscription if the end date has passed
     if (store.subscriptionStatus !== 'expired' && store.planExpiryDate && new Date() > store.planExpiryDate) {
       store.subscriptionStatus = 'expired';

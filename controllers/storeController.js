@@ -155,6 +155,44 @@ export const getMyStore = async (req, res) => {
   }
 };
 
+// UPDATE STORE EXPIRY (SUPERADMIN)
+export const updateStoreExpiry = async (req, res) => {
+  try {
+    const { planExpiryDate } = req.body;
+    const store = await Store.findById(req.params.id);
+    
+    if (!store) return res.status(404).json({ message: "Store not found" });
+
+    store.planExpiryDate = new Date(planExpiryDate);
+    // If the new date is in the future, automatically reactivate their subscription
+    if (store.planExpiryDate > new Date()) {
+      store.subscriptionStatus = 'active';
+    }
+    
+    await store.save();
+    res.json({ message: "Expiry date updated", store });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// UPDATE STORE STATUS (SUPERADMIN)
+export const updateStoreStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const store = await Store.findById(req.params.id);
+    
+    if (!store) return res.status(404).json({ message: "Store not found" });
+
+    store.status = status;
+    await store.save();
+    
+    res.json({ message: "Store status updated", store });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // GET STORE BY SUBDOMAIN (PUBLIC)
 export const getStoreBySubdomain = async (req, res) => {
   try {
