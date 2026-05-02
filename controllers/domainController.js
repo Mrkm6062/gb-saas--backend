@@ -3,6 +3,9 @@ import Store from "../models/Store.js";
 import crypto from "crypto";
 import dns from "dns";
 
+const TARGET_CNAME = "cname.galibrand.cloud";
+const TARGET_A_RECORD = "72.62.199.214";
+
 // Helper: Format and sanitize domain
 const sanitizeDomain = (domain) => {
   let sanitized = domain.toLowerCase().trim();
@@ -54,8 +57,6 @@ export const addDomain = async (req, res) => {
     // Generate unique verification token
     const verificationToken = crypto.randomBytes(16).toString("hex");
 
-    const targetCname = store.subdomain; // Dynamically use the store's Galibrand subdomain
-
     const newDomain = await Domain.create({
       userId: req.user._id,
       storeId: store._id,
@@ -69,9 +70,8 @@ export const addDomain = async (req, res) => {
       message: "Domain added successfully.",
       domain: newDomain,
       dnsInstructions: {
-        type: "CNAME",
-        name: sanitizedDomain.startsWith("www.") ? "www" : "@",
-        value: targetCname
+        aRecord: { type: "A", name: "@", value: TARGET_A_RECORD },
+        cnameRecord: { type: "CNAME", name: "www", value: TARGET_CNAME }
       }
     });
   } catch (error) {
@@ -91,31 +91,36 @@ export const verifyDomain = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized to verify this domain." });
     }
 
-    // Fetch the associated store to get the expected CNAME target
-    const store = await Store.findById(domainRecord.storeId);
-    if (!store) {
-      return res.status(404).json({ message: "Associated store not found." });
-    }
-    const targetCname = store.subdomain; // e.g., "myshop.galibrand.cloud"
-
     try {
-      // Execute DNS query to check CNAME records
-      const records = await dns.promises.resolveCname(domainRecord.domain);
+      let isVerified = false;
+      let foundRecords = [];
+
+      // Execute DNS queries to check A and CNAME records
+      const cnameRecords = await dns.promises.resolveCname(domainRecord.domain).catch(() => []);
+      const aRecords = await dns.promises.resolve4(domainRecord.domain).catch(() => []);
       
-      if (records.includes(targetCname) || records.includes(targetCname + '.')) {
+      foundRecords = [...cnameRecords, ...aRecords];
+
+      if (cnameRecords.includes(TARGET_CNAME) || cnameRecords.includes(TARGET_CNAME + '.')) {
+        isVerified = true;
+      } else if (aRecords.includes(TARGET_A_RECORD)) {
+        isVerified = true;
+      }
+
+      if (isVerified) {
         domainRecord.status = "connected";
         await domainRecord.save();
         return res.json({ message: "Domain verified and connected successfully!", domain: domainRecord });
       } else {
         return res.status(400).json({ 
-          message: `Domain CNAME does not point to our servers yet. Expected target: ${targetCname}. DNS changes can take up to 24 hours.`, 
-          foundRecords: records 
+          message: `Domain DNS does not point to our servers yet. Expected A record: ${TARGET_A_RECORD} or CNAME: ${TARGET_CNAME}. DNS changes can take up to 24 hours.`, 
+          foundRecords
         });
       }
     } catch (dnsError) {
       return res.status(400).json({ 
-        message: `Failed to resolve CNAME record. Ensure you added a CNAME pointing to ${targetCname}.`,
-        code: dnsError.code
+        message: "Failed to resolve DNS records. Ensure you added the A or CNAME records.",
+        code: dnsError.code || "DNS_ERROR"
       });
     }
   } catch (error) {
