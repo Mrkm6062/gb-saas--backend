@@ -123,7 +123,7 @@ app.use("/api/payment", paymentRoutes);
 
 // 🔥 SERVE REACT FRONTEND (Must be placed AFTER API routes)
 // Standard Vite build outputs to /dist. Change to /build if using CRA.
-const frontendPath = path.join(__dirname, "../store-frontend/dist");
+const frontendPath = process.env.STOREFRONT_BUILD_PATH || path.join(__dirname, "../store-frontend/dist");
 app.use(express.static(frontendPath));
 
 app.get("*", (req, res) => {
