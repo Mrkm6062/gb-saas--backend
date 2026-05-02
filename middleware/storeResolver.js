@@ -1,18 +1,43 @@
+import Domain from "../models/Domain.js";
 import Store from "../models/Store.js";
 
-// Resolves the store from the database using the subdomain
+// Resolves the store from the database using the custom domain or subdomain
 export const storeResolver = async (req, res, next) => {
   try {
-    // If store is already resolved by the Custom Domain Middleware, skip database lookup
-    if (req.store) return next();
-
-    // If request is from root domain or an unknown subdomain
-    if (!req.subdomain) {
-      return res.status(404).json({ message: "Store not found" });
+    let host = req.headers.host || "";
+    
+    // Respect origin header for API requests from storefront
+    if (req.headers.origin) {
+      try {
+        const originUrl = new URL(req.headers.origin);
+        host = originUrl.host;
+      } catch (e) {}
     }
 
-    // Fetch store and populate the plan details
-    const store = await Store.findOne({ storeSlug: req.subdomain }).populate('planId');
+    let hostname = host.split(":")[0].toLowerCase();
+    
+    // Normalize: remove "www." prefix
+    const normalizedHost = hostname.startsWith("www.") ? hostname.slice(4) : hostname;
+
+    let store = null;
+
+    // FIRST -> Check custom domain
+    const domainRecord = await Domain.findOne({ domain: normalizedHost, status: "connected" });
+    if (domainRecord) {
+      store = await Store.findById(domainRecord.storeId).populate('planId');
+    }
+
+    // SECOND -> Fallback to subdomain (if no custom domain match)
+    if (!store && (hostname.endsWith(".galibrand.cloud") || hostname.endsWith(".localhost") || hostname.endsWith(".nip.io"))) {
+      const subdomain = hostname.split(".")[0];
+      const ignored = ["www", "api", "dashboard", "cname", "store"];
+      
+      if (!ignored.includes(subdomain)) {
+        store = await Store.findOne({ storeSlug: subdomain }).populate('planId');
+      }
+    }
+
+    // THIRD -> If no store found
     if (!store) {
       return res.status(404).json({ message: "Store not found" });
     }

@@ -10,6 +10,7 @@ const TARGET_A_RECORD = "72.62.199.214";
 const sanitizeDomain = (domain) => {
   let sanitized = domain.toLowerCase().trim();
   sanitized = sanitized.replace(/^https?:\/\//, ''); // Remove protocol
+  sanitized = sanitized.replace(/^www\./, ''); // Always store the root domain
   sanitized = sanitized.split('/')[0]; // Remove paths
   return sanitized;
 };
@@ -95,15 +96,18 @@ export const verifyDomain = async (req, res) => {
       let isVerified = false;
       let foundRecords = [];
 
-      // Execute DNS queries to check A and CNAME records
-      const cnameRecords = await dns.promises.resolveCname(domainRecord.domain).catch(() => []);
-      const aRecords = await dns.promises.resolve4(domainRecord.domain).catch(() => []);
-      
-      foundRecords = [...cnameRecords, ...aRecords];
+      const rootDomain = domainRecord.domain; // e.g., mystore.com
+      const wwwDomain = `www.${rootDomain}`;  // e.g., www.mystore.com
 
-      if (cnameRecords.includes(TARGET_CNAME) || cnameRecords.includes(TARGET_CNAME + '.')) {
+      // Execute DNS queries to check A record of root, and CNAME of www
+      const aRecords = await dns.promises.resolve4(rootDomain).catch(() => []);
+      const cnameRecords = await dns.promises.resolveCname(wwwDomain).catch(() => []);
+      
+      foundRecords = [...aRecords, ...cnameRecords];
+
+      if (aRecords.includes(TARGET_A_RECORD)) {
         isVerified = true;
-      } else if (aRecords.includes(TARGET_A_RECORD)) {
+      } else if (cnameRecords.includes(TARGET_CNAME) || cnameRecords.includes(`${TARGET_CNAME}.`)) {
         isVerified = true;
       }
 
@@ -113,7 +117,7 @@ export const verifyDomain = async (req, res) => {
         return res.json({ message: "Domain verified and connected successfully!", domain: domainRecord });
       } else {
         return res.status(400).json({ 
-          message: `Domain DNS does not point to our servers yet. Expected A record: ${TARGET_A_RECORD} or CNAME: ${TARGET_CNAME}. DNS changes can take up to 24 hours.`, 
+          message: `Domain DNS not configured properly. Expected A record for ${rootDomain} pointing to ${TARGET_A_RECORD}, or CNAME for ${wwwDomain} pointing to ${TARGET_CNAME}.`, 
           foundRecords
         });
       }

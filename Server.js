@@ -115,8 +115,6 @@ app.use("/api/platform-social-media", platformSocialMediaRoutes); // Global plat
 app.use("/api/domains", domainRoutes); // Custom domain manager
 
 // 🔥 MULTI-TENANT MIDDLEWARE (GLOBAL FOR BELOW ROUTES)
-app.use(subdomainMiddleware);
-app.use(domainMiddleware);
 app.use(storeResolver);
 
 // Routes

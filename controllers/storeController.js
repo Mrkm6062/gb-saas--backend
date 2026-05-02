@@ -209,3 +209,16 @@ export const getStoreBySubdomain = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// GET RESOLVED STORE DATA (Public Storefront)
+export const getStoreData = async (req, res) => {
+  try {
+    if (!req.store) {
+      return res.status(404).json({ message: "Store not found" });
+    }
+    // Optionally, exclude sensitive data here if needed before returning
+    res.json(req.store);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
