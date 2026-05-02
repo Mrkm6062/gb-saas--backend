@@ -3,6 +3,9 @@ import Store from "../models/Store.js";
 // Resolves the store from the database using the subdomain
 export const storeResolver = async (req, res, next) => {
   try {
+    // If store is already resolved by the Custom Domain Middleware, skip database lookup
+    if (req.store) return next();
+
     // If request is from root domain or an unknown subdomain
     if (!req.subdomain) {
       return res.status(404).json({ message: "Store not found" });

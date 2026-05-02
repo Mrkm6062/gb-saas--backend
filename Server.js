@@ -5,6 +5,7 @@ import helmet from "helmet";
 
 import connectDB from "./config/db.js";
 import { subdomainMiddleware } from "./middleware/subdomain.js";
+import { domainMiddleware } from "./middleware/domainMiddleware.js";
 import { storeResolver } from "./middleware/storeResolver.js";
 
 // Routes
@@ -23,6 +24,7 @@ import socialMediaRoutes from "./routes/socialMediaRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import platformPolicyRoutes from "./routes/platformPolicyRoutes.js";
 import platformSocialMediaRoutes from "./routes/platformSocialMediaRoutes.js";
+import domainRoutes from "./routes/domainRoutes.js";
 
 
 dotenv.config();
@@ -110,9 +112,11 @@ app.use("/api/social-media", socialMediaRoutes); // Social media links
 app.use("/api/categories", categoryRoutes); // Store Categories
 app.use("/api/platform-policies", platformPolicyRoutes); // Global platform policies
 app.use("/api/platform-social-media", platformSocialMediaRoutes); // Global platform social links
+app.use("/api/domains", domainRoutes); // Custom domain manager
 
 // 🔥 MULTI-TENANT MIDDLEWARE (GLOBAL FOR BELOW ROUTES)
 app.use(subdomainMiddleware);
+app.use(domainMiddleware);
 app.use(storeResolver);
 
 // Routes
