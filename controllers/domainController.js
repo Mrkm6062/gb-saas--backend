@@ -3,8 +3,6 @@ import Store from "../models/Store.js";
 import crypto from "crypto";
 import dns from "dns";
 
-const TARGET_CNAME = "cname.galibrand.cloud";
-
 // Helper: Format and sanitize domain
 const sanitizeDomain = (domain) => {
   let sanitized = domain.toLowerCase().trim();
@@ -56,6 +54,8 @@ export const addDomain = async (req, res) => {
     // Generate unique verification token
     const verificationToken = crypto.randomBytes(16).toString("hex");
 
+    const targetCname = store.subdomain; // Dynamically use the store's Galibrand subdomain
+
     const newDomain = await Domain.create({
       userId: req.user._id,
       storeId: store._id,
@@ -71,7 +71,7 @@ export const addDomain = async (req, res) => {
       dnsInstructions: {
         type: "CNAME",
         name: sanitizedDomain.startsWith("www.") ? "www" : "@",
-        value: TARGET_CNAME
+        value: targetCname
       }
     });
   } catch (error) {
@@ -91,23 +91,30 @@ export const verifyDomain = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized to verify this domain." });
     }
 
+    // Fetch the associated store to get the expected CNAME target
+    const store = await Store.findById(domainRecord.storeId);
+    if (!store) {
+      return res.status(404).json({ message: "Associated store not found." });
+    }
+    const targetCname = store.subdomain; // e.g., "myshop.galibrand.cloud"
+
     try {
       // Execute DNS query to check CNAME records
       const records = await dns.promises.resolveCname(domainRecord.domain);
       
-      if (records.includes(TARGET_CNAME)) {
+      if (records.includes(targetCname) || records.includes(targetCname + '.')) {
         domainRecord.status = "connected";
         await domainRecord.save();
         return res.json({ message: "Domain verified and connected successfully!", domain: domainRecord });
       } else {
         return res.status(400).json({ 
-          message: "Domain CNAME does not point to our servers yet. DNS changes can take up to 24 hours.", 
+          message: `Domain CNAME does not point to our servers yet. Expected target: ${targetCname}. DNS changes can take up to 24 hours.`, 
           foundRecords: records 
         });
       }
     } catch (dnsError) {
       return res.status(400).json({ 
-        message: `Failed to resolve CNAME record. Ensure you added a CNAME pointing to ${TARGET_CNAME}.`,
+        message: `Failed to resolve CNAME record. Ensure you added a CNAME pointing to ${targetCname}.`,
         code: dnsError.code
       });
     }
