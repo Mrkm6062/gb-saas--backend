@@ -89,10 +89,8 @@ const seedSuperAdmin = async () => {
 };
 seedSuperAdmin();
 
-// Root check
-app.get("/", (req, res) => {
-  res.send("API Running...");
-});
+// 🔥 MULTI-TENANT MIDDLEWARE (GLOBAL FOR BELOW ROUTES)
+app.use(storeResolver);
 
 // Status check for frontend
 app.get("/api/status", (req, res) => {
@@ -114,8 +112,6 @@ app.use("/api/platform-policies", platformPolicyRoutes); // Global platform poli
 app.use("/api/platform-social-media", platformSocialMediaRoutes); // Global platform social links
 app.use("/api/domains", domainRoutes); // Custom domain manager
 
-// 🔥 MULTI-TENANT MIDDLEWARE (GLOBAL FOR BELOW ROUTES)
-app.use(storeResolver);
 
 // Routes
 app.use("/api/payment", paymentRoutes);
