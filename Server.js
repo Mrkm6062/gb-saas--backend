@@ -21,6 +21,8 @@ import Policy from "./models/Policy.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import socialMediaRoutes from "./routes/socialMediaRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
+import platformPolicyRoutes from "./routes/platformPolicyRoutes.js";
+import platformSocialMediaRoutes from "./routes/platformSocialMediaRoutes.js";
 
 
 dotenv.config();
@@ -106,6 +108,8 @@ app.use("/api/policies", policyRoutes); // Store policies (handles both storefro
 app.use("/api/upload", uploadRoutes); // Media uploads
 app.use("/api/social-media", socialMediaRoutes); // Social media links
 app.use("/api/categories", categoryRoutes); // Store Categories
+app.use("/api/platform-policies", platformPolicyRoutes); // Global platform policies
+app.use("/api/platform-social-media", platformSocialMediaRoutes); // Global platform social links
 
 // 🔥 MULTI-TENANT MIDDLEWARE (GLOBAL FOR BELOW ROUTES)
 app.use(subdomainMiddleware);
