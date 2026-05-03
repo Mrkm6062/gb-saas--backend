@@ -1,6 +1,7 @@
 import { storage } from "../gcs.js";
 import Store from "../models/Store.js";
 import sharp from "sharp";
+import DOMPurify from "isomorphic-dompurify";
 
 const bucket = storage.bucket(process.env.GCS_BUCKET);
 
@@ -23,6 +24,29 @@ export const uploadImages = async (req, res) => {
       return res.status(400).json({ message: "No files uploaded" });
     }
 
+    // Validate that all uploaded files are strictly images (both MIME and actual content)
+    for (const file of req.files) {
+      if (!file.mimetype.startsWith('image/')) {
+        return res.status(400).json({ message: `Invalid file type: ${file.originalname}. Only image files are allowed.` });
+      }
+
+      const isIco = file.originalname.toLowerCase().endsWith('.ico') || file.mimetype === 'image/x-icon' || file.mimetype === 'image/vnd.microsoft.icon';
+      
+      if (isIco) {
+        // Validate ICO magic numbers: First 4 bytes must be 00 00 01 00
+        if (file.buffer.length < 4 || file.buffer[0] !== 0 || file.buffer[1] !== 0 || file.buffer[2] !== 1 || file.buffer[3] !== 0) {
+          return res.status(400).json({ message: `File ${file.originalname} is a fake or corrupted ICO file.` });
+        }
+      } else {
+        // Deep content check using sharp to ensure it's a real image (catches renamed PDFs/Videos)
+        try {
+          await sharp(file.buffer).metadata();
+        } catch (error) {
+          return res.status(400).json({ message: `File ${file.originalname} is not a valid image. It might be a renamed video or document.` });
+        }
+      }
+    }
+
     const uploadedUrls = [];
 
     for (const file of req.files) {
@@ -38,6 +62,12 @@ export const uploadImages = async (req, res) => {
         fileBuffer = file.buffer;
         contentType = 'image/x-icon';
         extension = 'ico';
+      } else if (originalName.endsWith('.svg') || file.mimetype === 'image/svg+xml') {
+        // Sanitize SVG to prevent XSS while keeping the vector image intact
+        const cleanSvg = DOMPurify.sanitize(file.buffer.toString('utf-8'), { USE_PROFILES: { svg: true } });
+        fileBuffer = Buffer.from(cleanSvg, 'utf-8');
+        contentType = 'image/svg+xml';
+        extension = 'svg';
       } else if (originalName.endsWith('.webp') || file.mimetype === 'image/webp') {
         // Optimize but keep as .webp
         fileBuffer = await sharp(file.buffer)
@@ -54,8 +84,9 @@ export const uploadImages = async (req, res) => {
         extension = 'webp';
       }
 
-      const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}.${extension}`;
-      const gcsFilePath = `${storeFolder}/products/${filename}`;
+      // Use the original filename, replacing spaces with hyphens for safe URLs
+      const safeOriginalName = file.originalname.replace(/\s+/g, '-');
+      const gcsFilePath = `${storeFolder}/products/${safeOriginalName}`;
       const blob = bucket.file(gcsFilePath);
 
       await blob.save(fileBuffer, {
@@ -66,7 +97,8 @@ export const uploadImages = async (req, res) => {
         resumable: false,
       });
 
-      const publicUrl = `https://storage.googleapis.com/${process.env.GCS_BUCKET}/${gcsFilePath}`;
+      // Encode URI components to handle any special characters in the original name safely
+      const publicUrl = `https://storage.googleapis.com/${process.env.GCS_BUCKET}/${encodeURIComponent(gcsFilePath).replace(/%2F/g, '/')}`;
       uploadedUrls.push(publicUrl);
     }
 
@@ -96,7 +128,7 @@ export const listImages = async (req, res) => {
     const [files] = await bucket.getFiles({ prefix });
     const images = files.map((file) => ({
       name: file.name,
-      url: `https://storage.googleapis.com/${process.env.GCS_BUCKET}/${file.name}`,
+      url: `https://storage.googleapis.com/${process.env.GCS_BUCKET}/${encodeURIComponent(file.name).replace(/%2F/g, '/')}`,
       size: parseInt(file.metadata.size || 0, 10),
       createdAt: file.metadata.timeCreated
     }));
