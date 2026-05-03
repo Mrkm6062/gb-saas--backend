@@ -1,7 +1,7 @@
 import { storage } from "../gcs.js";
 import Store from "../models/Store.js";
 import sharp from "sharp";
-import DOMPurify from "isomorphic-dompurify";
+import { optimize } from "svgo";
 
 const bucket = storage.bucket(process.env.GCS_BUCKET);
 
@@ -63,8 +63,18 @@ export const uploadImages = async (req, res) => {
         contentType = 'image/x-icon';
         extension = 'ico';
       } else if (originalName.endsWith('.svg') || file.mimetype === 'image/svg+xml') {
-        // Sanitize SVG to prevent XSS while keeping the vector image intact
-        const cleanSvg = DOMPurify.sanitize(file.buffer.toString('utf-8'), { USE_PROFILES: { svg: true } });
+        // Optimize and sanitize SVG using SVGO (Bypasses PM2 jsdom ESM conflict)
+        const result = optimize(file.buffer.toString('utf-8'), {
+          multipass: true,
+          plugins: [
+            {
+              name: 'preset-default',
+              params: { overrides: { removeViewBox: false } },
+            },
+            'removeScriptElement',
+          ],
+        });
+        const cleanSvg = result.data;
         fileBuffer = Buffer.from(cleanSvg, 'utf-8');
         contentType = 'image/svg+xml';
         extension = 'svg';
