@@ -20,20 +20,10 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd /var/www/GB-BACKEND
+            cd /var/www/GB-BACKEND/gb-saas-backend
 
             echo "Updating code..."
-            git reset --hard
             git pull origin main
 
-            echo "Installing backend..."
-            npm install
-
-            echo "Building frontend..."
-            cd frontend
-            npm install
-            npm run build
-
             echo "Restarting server..."
-            cd ..
-            pm2 reload all
+            pm2 restart 4 --update-env
