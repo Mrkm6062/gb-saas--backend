@@ -27,6 +27,7 @@ import categoryRoutes from "./routes/categoryRoutes.js";
 import platformPolicyRoutes from "./routes/platformPolicyRoutes.js";
 import platformSocialMediaRoutes from "./routes/platformSocialMediaRoutes.js";
 import domainRoutes from "./routes/domainRoutes.js";
+import { getPlatformSettings } from "./controllers/platformSettingsController.js";
 
 
 dotenv.config();
@@ -116,6 +117,7 @@ app.use("/api/categories", categoryRoutes); // Store Categories
 app.use("/api/platform-policies", platformPolicyRoutes); // Global platform policies
 app.use("/api/platform-social-media", platformSocialMediaRoutes); // Global platform social links
 app.use("/api/domains", domainRoutes); // Custom domain manager
+app.use("/api/platform-settings", getPlatformSettings); // Public platform settings
 
 
 // Routes

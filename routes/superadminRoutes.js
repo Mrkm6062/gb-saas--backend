@@ -4,6 +4,7 @@ import { getPlans, createOrUpdatePlan, assignPlanToStore } from "../controllers/
 import { updateStoreStatus, updateStoreExpiry } from "../controllers/storeController.js";
 import { getPlatformPolicies, createOrUpdatePlatformPolicy, deletePlatformPolicy } from "../controllers/platformPolicyController.js";
 import { getPlatformSocialMedia, createPlatformSocialMedia, deletePlatformSocialMedia } from "../controllers/platformSocialMediaController.js";
+import { updatePlatformSettings } from "../controllers/platformSettingsController.js";
 import { protectSuperadmin } from "../middleware/superadminMiddleware.js";
 
 const router = express.Router();
@@ -27,5 +28,8 @@ router.delete("/policies/:id", protectSuperadmin, deletePlatformPolicy);
 router.get("/social-media", protectSuperadmin, getPlatformSocialMedia);
 router.post("/social-media", protectSuperadmin, createPlatformSocialMedia);
 router.delete("/social-media/:id", protectSuperadmin, deletePlatformSocialMedia);
+
+// Platform Settings
+router.put("/settings", protectSuperadmin, updatePlatformSettings);
 
 export default router;
