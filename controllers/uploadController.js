@@ -10,10 +10,14 @@ export const uploadImages = async (req, res) => {
     const { storeId } = req.body;
     if (!storeId) return res.status(400).json({ message: "Store ID is required" });
 
-    const store = await Store.findById(storeId);
-    if (!store) return res.status(404).json({ message: "Store not found" });
-
-    const storeFolder = store.storeSlug || store.storeId;
+    let storeFolder = "superadmin";
+    
+    // Only look up the store if it's not a Superadmin global upload
+    if (storeId !== "000000000000000000000000") {
+      const store = await Store.findById(storeId);
+      if (!store) return res.status(404).json({ message: "Store not found" });
+      storeFolder = store.storeSlug || store.storeId;
+    }
 
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: "No files uploaded" });
@@ -79,10 +83,14 @@ export const listImages = async (req, res) => {
     const { storeId } = req.query;
     if (!storeId) return res.status(400).json({ message: "Store ID is required" });
 
-    const store = await Store.findById(storeId);
-    if (!store) return res.status(404).json({ message: "Store not found" });
-
-    const storeFolder = store.storeSlug || store.storeId;
+    let storeFolder = "superadmin";
+    
+    // Only look up the store if it's not a Superadmin global query
+    if (storeId !== "000000000000000000000000") {
+      const store = await Store.findById(storeId);
+      if (!store) return res.status(404).json({ message: "Store not found" });
+      storeFolder = store.storeSlug || store.storeId;
+    }
     const prefix = `${storeFolder}/`;
 
     const [files] = await bucket.getFiles({ prefix });
