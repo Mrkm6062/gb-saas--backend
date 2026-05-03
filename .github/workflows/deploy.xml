@@ -1,0 +1,39 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /var/www/GB-BACKEND
+
+            echo "Updating code..."
+            git reset --hard
+            git pull origin main
+
+            echo "Installing backend..."
+            npm install
+
+            echo "Building frontend..."
+            cd frontend
+            npm install
+            npm run build
+
+            echo "Restarting server..."
+            cd ..
+            pm2 reload all
