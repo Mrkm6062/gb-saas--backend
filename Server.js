@@ -28,6 +28,7 @@ import platformPolicyRoutes from "./routes/platformPolicyRoutes.js";
 import platformSocialMediaRoutes from "./routes/platformSocialMediaRoutes.js";
 import domainRoutes from "./routes/domainRoutes.js";
 import { getPlatformSettings } from "./controllers/platformSettingsController.js";
+import couponRoutes from "./routes/couponRoutes.js";
 
 
 dotenv.config();
@@ -119,6 +120,7 @@ app.use("/api/platform-policies", platformPolicyRoutes); // Global platform poli
 app.use("/api/platform-social-media", platformSocialMediaRoutes); // Global platform social links
 app.use("/api/domains", domainRoutes); // Custom domain manager
 app.use("/api/platform-settings", getPlatformSettings); // Public platform settings
+app.use("/api/coupons", couponRoutes); // Coupons for stores
 
 
 // Routes
