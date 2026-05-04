@@ -2,6 +2,40 @@ import Order from "../models/Order.js";
 import Product from "../models/Product.js";
 import Store from "../models/Store.js";
 import Coupon from "../models/Coupon.js";
+import StoreAlerts from "../models/StoreAlerts.js";
+import nodemailer from "nodemailer";
+
+// Internal Helper function to send order confirmation email asynchronously
+const sendOrderConfirmationEmail = async (order, store) => {
+  if (!order.customerEmail) return;
+  try {
+    const config = await StoreAlerts.findOne({ storeId: store._id });
+    if (!config || !config.isEmailEnabled || !config.emailAddress || !config.appPassword) return;
+
+    const transporter = nodemailer.createTransport({
+      host: config.smtpHost, port: config.smtpPort, secure: config.smtpPort === 465,
+      auth: { user: config.emailAddress, pass: config.appPassword }
+    });
+
+    const itemsHtml = order.orderItems.map(item => `<tr><td style="padding:8px; border-bottom:1px solid #ddd;">${item.qty}x ${item.name}</td><td style="padding:8px; border-bottom:1px solid #ddd; text-align:right;">₹${item.price * item.qty}</td></tr>`).join('');
+    
+    const html = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+        <h2 style="color: #76b900;">Order Confirmation</h2>
+        <p>Hi ${order.customerName},</p>
+        <p>Thank you for shopping with <strong>${store.storeName}</strong>! We have received your order and are currently processing it.</p>
+        <h3 style="margin-top: 30px; border-bottom: 2px solid #eee; padding-bottom: 5px;">Order Summary (ID: ${order._id.toString().slice(-6).toUpperCase()})</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">${itemsHtml}</table>
+        <p style="text-align: right; font-size: 16px;"><strong>Total Amount: ₹${order.totalAmount}</strong></p>
+        ${order.couponCode ? `<p style="text-align: right; color: green;">Discount Applied: -₹${order.discountAmount} (${order.couponCode})</p>` : ''}
+        <p style="margin-top: 30px; color: #777; font-size: 12px; text-align: center;">This is an automated email sent via Galibrand Cloud.</p>
+      </div>
+    `;
+    await transporter.sendMail({ from: `"${store.storeName}" <${config.emailAddress}>`, to: order.customerEmail, subject: `Order Received - ${store.storeName}`, html });
+  } catch (err) {
+    console.error("Failed to send order email:", err.message);
+  }
+};
 
 // ✅ CREATE ORDER (PUBLIC - FROM STORE FRONT)
 export const createOrder = async (req, res) => {
@@ -63,6 +97,9 @@ export const createOrder = async (req, res) => {
     if (couponCode) {
       await Coupon.updateOne({ storeId: store._id, code: couponCode }, { $inc: { usageCount: 1 } });
     }
+
+    // Fire and forget email notification
+    sendOrderConfirmationEmail(order, store).catch(console.error);
 
     res.status(201).json(order);
   } catch (error) {
