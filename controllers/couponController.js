@@ -107,7 +107,12 @@ export const validateCoupon = async (req, res) => {
     const { code, cartTotal } = req.body;
 
     // Look for the explicitly passed store ID header from the React frontend
-    const storeId = req.headers['x-store-id'] || (req.store && req.store._id);
+    let storeId = req.headers['x-store-id'] || (req.store && req.store._id);
+
+    // Prevent stringified "undefined" or "null" from bypassing the truthy check
+    if (storeId === "undefined" || storeId === "null") {
+      storeId = null;
+    }
 
     if (!storeId) return res.status(400).json({ message: "Store context missing" });
     if (!code) return res.status(400).json({ message: "Please enter a coupon code" });
