@@ -10,7 +10,7 @@ export const getAlertConfig = async (req, res) => {
 
     let config = await StoreAlerts.findOne({ storeId });
     if (!config) {
-      config = { isEmailEnabled: false, provider: 'gmail', smtpHost: 'smtp.gmail.com', smtpPort: 587, emailAddress: '', appPassword: '' };
+      config = { isEmailEnabled: false, provider: 'gmail', smtpHost: 'smtp.gmail.com', smtpPort: 587, emailAddress: '', appPassword: '', templates: [] };
     }
     res.json(config);
   } catch (error) {
@@ -21,14 +21,14 @@ export const getAlertConfig = async (req, res) => {
 export const saveAlertConfig = async (req, res) => {
   try {
     const { storeId } = req.params;
-    const { isEmailEnabled, provider, smtpHost, smtpPort, emailAddress, appPassword } = req.body;
+    const { isEmailEnabled, provider, smtpHost, smtpPort, emailAddress, appPassword, templates } = req.body;
     
     const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId });
     if (!store) return res.status(403).json({ message: "Unauthorized" });
 
     const config = await StoreAlerts.findOneAndUpdate(
       { storeId },
-      { isEmailEnabled, provider, smtpHost, smtpPort, emailAddress, appPassword },
+      { isEmailEnabled, provider, smtpHost, smtpPort, emailAddress, appPassword, templates },
       { new: true, upsert: true }
     );
     res.json({ message: "Settings saved successfully", config });
