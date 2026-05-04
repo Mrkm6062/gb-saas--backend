@@ -17,16 +17,11 @@ export const createOrder = async (req, res) => {
       discountAmount
     } = req.body;
 
-    // Prioritize subdomain from Origin header (via middleware), fallback to x-store header
-    const storeSlug = req.subdomain || req.headers['x-store'];
-    if (!storeSlug) {
+    if (!req.store) {
       return res.status(400).json({ message: "Store context missing. Make sure you are ordering from a valid store domain." });
     }
 
-    const store = await Store.findOne({ storeSlug });
-    if (!store) {
-      return res.status(404).json({ message: "Store not found" });
-    }
+    const store = req.store;
 
     const order = await Order.create({
       store: store._id,
