@@ -48,6 +48,8 @@ app.use(cors());
 // Security Headers Middleware
 app.use(
   helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginEmbedderPolicy: false,
     hsts: {
       maxAge: 31536000,
       includeSubDomains: true,
