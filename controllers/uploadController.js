@@ -78,25 +78,25 @@ export const uploadImages = async (req, res) => {
         fileBuffer = Buffer.from(cleanSvg, 'utf-8');
         contentType = 'image/svg+xml';
         extension = 'svg';
-      } else if (originalName.endsWith('.webp') || file.mimetype === 'image/webp') {
-        // Optimize but keep as .webp
+      } else if (originalName.endsWith('.avif') || file.mimetype === 'image/avif') {
+        // Optimize but keep as .avif
         fileBuffer = await sharp(file.buffer)
-          .webp({ quality: 80 })
+          .avif({ quality: 80 })
           .toBuffer();
-        contentType = 'image/webp';
-        extension = 'webp';
+        contentType = 'image/avif';
+        extension = 'avif';
       } else {
-        // Convert other image formats to .webp for wider browser compatibility
+        // Convert all other image formats to .avif for maximum compression
         fileBuffer = await sharp(file.buffer)
-          .webp({ quality: 80 })
+          .avif({ quality: 80 })
           .toBuffer();
-        contentType = 'image/webp';
-        extension = 'webp';
+        contentType = 'image/avif';
+        extension = 'avif';
       }
 
-      // Use the original filename, replacing spaces with hyphens for safe URLs
-      const safeOriginalName = file.originalname.replace(/\s+/g, '-');
-      const gcsFilePath = `${storeFolder}/products/${safeOriginalName}`;
+      // Ensure the extension matches the new format
+      const safeBaseName = file.originalname.replace(/\.[^/.]+$/, "").replace(/\s+/g, '-');
+      const gcsFilePath = `${storeFolder}/products/${safeBaseName}.${extension}`;
       const blob = bucket.file(gcsFilePath);
 
       await blob.save(fileBuffer, {
