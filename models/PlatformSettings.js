@@ -4,7 +4,7 @@ const platformSettingsSchema = new mongoose.Schema({
   // Using a singleton pattern with a fixed key
   key: { type: String, default: "global", unique: true },
   
-  mainLogoUrl: { type: String, default: "https://galibrand.cloud/public/Name.png" },
+  mainLogoUrl: { type: String, default: "https://storage.googleapis.com/galibrand/superadmin/products/galibrandfullname-logo.png" },
   
   loginImageGrid: {
     type: [String],

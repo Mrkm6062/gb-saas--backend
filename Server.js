@@ -68,6 +68,7 @@ app.use(
         imgSrc: ["'self'", "https://storage.googleapis.com", "data:", "blob:"],
         scriptSrc: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        styleSrcElem: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
         connectSrc: ["'self'", "https://*.galibrand.cloud", "https://cloudflareinsights.com"],
       },
