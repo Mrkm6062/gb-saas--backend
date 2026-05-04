@@ -216,3 +216,31 @@ export const updateOrderStatus = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// ✅ RESEND SPECIFIC ORDER EMAIL (MANUAL TRIGGER)
+export const resendOrderEmail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { emailType } = req.body; // e.g., 'placed', 'shipped', 'delivered', 'canceled', 'returned'
+
+    if (!emailType) {
+      return res.status(400).json({ message: "emailType is required." });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    const store = await Store.findOne({ _id: order.store, ownerId: req.user.userId });
+    if (!store) return res.status(403).json({ message: "Not authorized to access this order" });
+
+    if (emailType === 'placed') {
+      await sendOrderConfirmationEmail(order, store);
+    } else {
+      await sendStatusUpdateEmail(order, store, emailType);
+    }
+
+    res.json({ message: `Email alert for '${emailType}' triggered successfully.` });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
