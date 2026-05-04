@@ -1,6 +1,7 @@
 import Order from "../models/Order.js";
 import Product from "../models/Product.js";
 import Store from "../models/Store.js";
+import Coupon from "../models/Coupon.js";
 
 // ✅ CREATE ORDER (PUBLIC - FROM STORE FRONT)
 export const createOrder = async (req, res) => {
@@ -11,7 +12,9 @@ export const createOrder = async (req, res) => {
       customerPhone,
       address,
       orderItems,
-      totalAmount
+      totalAmount,
+      couponCode,
+      discountAmount
     } = req.body;
 
     // Prioritize subdomain from Origin header (via middleware), fallback to x-store header
@@ -33,6 +36,8 @@ export const createOrder = async (req, res) => {
       address,
       orderItems,
       totalAmount,
+      couponCode,
+      discountAmount,
       paymentStatus: "pending",
       orderStatus: "placed"
     });
@@ -57,6 +62,11 @@ export const createOrder = async (req, res) => {
           { $inc: { totalStock: -item.qty } }
         );
       }
+    }
+
+    // Increment the coupon usage count if a coupon was used
+    if (couponCode) {
+      await Coupon.updateOne({ storeId: store._id, code: couponCode }, { $inc: { usageCount: 1 } });
     }
 
     res.status(201).json(order);
