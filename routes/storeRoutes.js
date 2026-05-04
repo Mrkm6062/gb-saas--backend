@@ -16,8 +16,8 @@ router.put("/:id/plan", protect, upgradeStorePlan); // Maps PUT requests to upgr
 // Tenant API Routes (Using /tenant prefix to avoid conflicts with /:subdomain)
 router.get("/tenant/info", subdomainMiddleware, storeResolver, (req, res) => {
   // Return current store details
-  const { storeName, logo, banner, theme, favicon, websiteTitle, metaDescription, subdomain } = req.store;
-  res.json({ name: storeName, logo, banner, theme, favicon, websiteTitle, metaDescription, subdomain });
+  const { _id, storeName, logo, banner, theme, favicon, websiteTitle, metaDescription, subdomain } = req.store;
+  res.json({ _id, name: storeName, logo, banner, theme, favicon, websiteTitle, metaDescription, subdomain });
 });
 
 router.get("/tenant/products", subdomainMiddleware, storeResolver, async (req, res) => {
