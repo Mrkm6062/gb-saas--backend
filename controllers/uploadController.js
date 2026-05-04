@@ -81,14 +81,14 @@ export const uploadImages = async (req, res) => {
       } else if (originalName.endsWith('.avif') || file.mimetype === 'image/avif') {
         // Optimize but keep as .avif
         fileBuffer = await sharp(file.buffer)
-          .avif({ quality: 80 })
+          .avif({ quality: 80, effort: 3 })
           .toBuffer();
         contentType = 'image/avif';
         extension = 'avif';
       } else {
         // Convert all other image formats to .avif for maximum compression
         fileBuffer = await sharp(file.buffer)
-          .avif({ quality: 80 })
+          .avif({ quality: 80, effort: 3 })
           .toBuffer();
         contentType = 'image/avif';
         extension = 'avif';

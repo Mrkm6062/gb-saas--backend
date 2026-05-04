@@ -5,6 +5,8 @@ const platformSettingsSchema = new mongoose.Schema({
   key: { type: String, default: "global", unique: true },
   
   mainLogoUrl: { type: String, default: "https://storage.googleapis.com/galibrand/superadmin/products/galibrandfullname-logo.png" },
+
+  miniLogoUrl: { type: String, default: "" },
   
   loginImageGrid: {
     type: [String],
