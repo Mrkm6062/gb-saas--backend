@@ -106,11 +106,15 @@ export const validateCoupon = async (req, res) => {
   try {
     const { code, cartTotal } = req.body;
 
-    if (!req.store || !req.store._id) return res.status(400).json({ message: "Store context missing" });
+    // Look for the explicitly passed store ID header from the React frontend
+    const storeId = req.headers['x-store-id'] || (req.store && req.store._id);
+
+    if (!storeId) return res.status(400).json({ message: "Store context missing" });
     if (!code) return res.status(400).json({ message: "Please enter a coupon code" });
     if (cartTotal === undefined) return res.status(400).json({ message: "Cart total is required to validate the coupon" });
 
-    const coupon = await Coupon.findOne({ storeId: req.store._id, code: code.toUpperCase() });
+    const trimmedCode = code.trim().toUpperCase();
+    const coupon = await Coupon.findOne({ storeId, code: trimmedCode });
     
     if (!coupon) return res.status(404).json({ message: "Invalid coupon code" });
     if (!coupon.isActive) return res.status(400).json({ message: "This coupon is no longer active" });
