@@ -111,7 +111,8 @@ export const createOrder = async (req, res) => {
       totalAmount,
       couponCode,
       discountAmount,
-      shippingCharge
+      shippingCharge,
+      paymentMethod
     } = req.body;
 
     if (!req.store) {
@@ -146,6 +147,7 @@ export const createOrder = async (req, res) => {
       couponCode,
       discountAmount,
       shippingCharge,
+      paymentMethod: paymentMethod || 'cod',
       paymentStatus: "pending",
       orderStatus: "placed"
     });
@@ -209,9 +211,9 @@ export const sendCustomerOtp = async (req, res) => {
     });
 
     await transporter.sendMail({
-      from: `"${req.store.name}" <${config.emailAddress}>`,
+      from: `"${req.store.storeName}" <${config.emailAddress}>`,
       to: email,
-      subject: `${otp} is your verification code - ${req.store.name}`,
+      subject: `Verification Code - ${req.store.storeName}`,
       html: `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333; text-align: center;">
         <h2 style="color: #76b900;">Verification Code</h2>
         <p>Please use the following OTP to verify your email and view your order history.</p>
@@ -280,7 +282,8 @@ export const getPublicOrder = async (req, res) => {
       shippingCharge: order.shippingCharge,
       orderItems: order.orderItems,
       customerName: order.customerName, // Name only, no phone/email for privacy
-      store: order.store
+      store: order.store,
+      paymentMethod: order.paymentMethod
     };
 
     res.json(safeOrder);
