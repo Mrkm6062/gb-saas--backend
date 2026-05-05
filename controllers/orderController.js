@@ -3,6 +3,7 @@ import Product from "../models/Product.js";
 import Store from "../models/Store.js";
 import Coupon from "../models/Coupon.js";
 import StoreAlerts from "../models/StoreAlerts.js";
+import DeliverySettings from "../models/DeliverySettings.js";
 import nodemailer from "nodemailer";
 
 // Internal Helper function to send order confirmation email asynchronously
@@ -116,6 +117,21 @@ export const createOrder = async (req, res) => {
     }
 
     const store = req.store;
+    
+    // Validate Delivery Rules Securely on the Backend
+    const deliverySettings = await DeliverySettings.findOne({ storeId: store._id });
+    if (deliverySettings) {
+      if (deliverySettings.deliveryMode === 'state') {
+        const allowed = deliverySettings.allowedStates.map(s => s.toLowerCase());
+        if (!allowed.includes((address.state || '').toLowerCase().trim())) {
+          return res.status(400).json({ message: `Sorry, we do not deliver to ${address.state} at the moment.` });
+        }
+      } else if (deliverySettings.deliveryMode === 'pincode') {
+        if (!deliverySettings.allowedPincodes.includes((address.pincode || '').trim())) {
+          return res.status(400).json({ message: `Sorry, we do not deliver to pincode ${address.pincode} at the moment.` });
+        }
+      }
+    }
 
     const order = await Order.create({
       store: store._id,

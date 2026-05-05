@@ -1,5 +1,7 @@
 import DeliverySettings from "../models/DeliverySettings.js";
 import Store from "../models/Store.js";
+import StateDistrictMap from "../models/StateDistrictMap.js";
+import Pincode from "../models/Pincode.js";
 
 export const getPublicDeliverySettings = async (req, res) => {
   try {
@@ -19,6 +21,25 @@ export const getPublicDeliverySettings = async (req, res) => {
       baseCharge: 0,
       freeShippingThreshold: 0
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getStatesAndDistricts = async (req, res) => {
+  try {
+    const map = await StateDistrictMap.find().sort({ stateName: 1 });
+    res.json(map);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getOfficesByDistrict = async (req, res) => {
+  try {
+    const { state, district } = req.query;
+    const offices = await Pincode.find({ stateName: state, districtName: district }).sort({ officeName: 1 });
+    res.json(offices);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -68,6 +89,24 @@ export const updateDeliverySettings = async (req, res) => {
     );
 
     res.json(settings);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getDetailsByPincode = async (req, res) => {
+  try {
+    const { pincode } = req.params;
+    if (!pincode || isNaN(pincode)) {
+      return res.status(400).json({ message: "Invalid pincode" });
+    }
+
+    const record = await Pincode.findOne({ pincode: Number(pincode) });
+    if (record) {
+      res.json({ city: record.districtName, state: record.stateName });
+    } else {
+      res.status(404).json({ message: "Pincode not found" });
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

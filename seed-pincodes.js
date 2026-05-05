@@ -42,10 +42,7 @@ const fetchAndSeedPincodes = async () => {
   }
 
   try {
-    await mongoose.connect(MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(MONGODB_URI);
     console.log('MongoDB connected for seeding...');
 
     let offset = 0;
@@ -65,9 +62,13 @@ const fetchAndSeedPincodes = async () => {
       const records = data.records;
 
       if (records && records.length > 0) {
-        const bulkOps = records.map(record => ({
+        const bulkOps = records.reduce((ops, record) => {
+          const parsedPincode = parseInt(record.pincode, 10);
+          if (isNaN(parsedPincode)) return ops; // Skip invalid or missing pincodes
+
+          ops.push({
           updateOne: {
-            filter: { pincode: parseInt(record.pincode, 10), officeName: record.officename },
+              filter: { pincode: parsedPincode, officeName: record.officename },
             update: {
               $set: {
                 officeType: record.officetype,
@@ -82,13 +83,21 @@ const fetchAndSeedPincodes = async () => {
             },
             upsert: true // Insert if it doesn't exist, update if it does
           }
-        }));
+          });
+          
+          return ops;
+        }, []);
 
+        if (bulkOps.length > 0) {
         await Pincode.bulkWrite(bulkOps);
+        }
         
         totalRecords += records.length;
         console.log(`Inserted/updated ${records.length} records. Total so far: ${totalRecords}`);
         offset += records.length;
+        
+        // Add a 500ms delay to prevent rate limiting from data.gov.in
+        await new Promise(resolve => setTimeout(resolve, 500));
       } else {
         hasMore = false;
         console.log('No more records to fetch.');
