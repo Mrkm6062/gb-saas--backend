@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs/promises";
 
 import connectDB from "./config/db.js";
 import { subdomainMiddleware } from "./middleware/subdomain.js";
@@ -139,10 +140,30 @@ app.use("/api/payment", paymentRoutes);
 // 🔥 SERVE REACT FRONTEND (Must be placed AFTER API routes)
 // Standard Vite build outputs to /dist. Change to /build if using CRA.
 const frontendPath = process.env.STOREFRONT_BUILD_PATH || path.join(__dirname, "../store-frontend/dist");
-app.use(express.static(frontendPath));
+app.use(express.static(frontendPath, { index: false }));
 
-app.get("*", (req, res) => {
-  res.sendFile(path.join(frontendPath, "index.html"));
+let cachedIndexHtml = null;
+
+app.get("*", async (req, res) => {
+  try {
+    if (!cachedIndexHtml) {
+      cachedIndexHtml = await fs.readFile(path.join(frontendPath, "index.html"), "utf8");
+    }
+    let html = cachedIndexHtml;
+    
+    if (req.store) {
+      const storeTitle = req.store.websiteTitle || req.store.name || "Store";
+      html = html.replace(/<title>.*?<\/title>/, `<title>${storeTitle}</title>`);
+      
+      if (req.store.favicon) {
+        html = html.replace('href="/favicon.ico?v=2"', `href="${req.store.favicon}"`);
+      }
+    }
+    
+    res.send(html);
+  } catch (err) {
+    res.sendFile(path.join(frontendPath, "index.html"));
+  }
 });
 
 // Error fallback
