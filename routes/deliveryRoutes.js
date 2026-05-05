@@ -7,6 +7,8 @@ const router = express.Router();
 
 router.get("/public", getPublicDeliverySettings);
 router.get("/public/pincode/:pincode", getDetailsByPincode);
+router.get("/locations", protect, getStatesAndDistricts);
+router.get("/offices", protect, getOfficesByDistrict);
 router.get("/", protect, getDeliverySettings);
 router.put("/", protect, updateDeliverySettings);
 
