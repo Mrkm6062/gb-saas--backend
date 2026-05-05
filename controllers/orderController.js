@@ -5,6 +5,8 @@ import Coupon from "../models/Coupon.js";
 import StoreAlerts from "../models/StoreAlerts.js";
 import DeliverySettings from "../models/DeliverySettings.js";
 import nodemailer from "nodemailer";
+import jwt from "jsonwebtoken";
+import CustomerOTP from "../models/CustomerOTP.js";
 
 // Internal Helper function to send order confirmation email asynchronously
 const sendOrderConfirmationEmail = async (order, store) => {
@@ -179,6 +181,109 @@ export const createOrder = async (req, res) => {
     sendOrderConfirmationEmail(order, store).catch(console.error);
 
     res.status(201).json(order);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ CUSTOMER AUTH: SEND OTP
+export const sendCustomerOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!req.store) return res.status(400).json({ message: "Store context missing" });
+    const storeId = req.store._id;
+
+    const config = await StoreAlerts.findOne({ storeId });
+    if (!config || !config.isEmailEnabled || !config.emailAddress || !config.appPassword) {
+      return res.status(400).json({ message: "Store owner has not configured email alerts. Please contact support." });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    await CustomerOTP.findOneAndDelete({ email, storeId });
+    await CustomerOTP.create({ email, storeId, otp });
+
+    const transporter = nodemailer.createTransport({
+      host: config.smtpHost, port: config.smtpPort, secure: config.smtpPort === 465,
+      auth: { user: config.emailAddress, pass: config.appPassword }
+    });
+
+    await transporter.sendMail({
+      from: `"${req.store.name}" <${config.emailAddress}>`,
+      to: email,
+      subject: `${otp} is your verification code - ${req.store.name}`,
+      html: `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333; text-align: center;">
+        <h2 style="color: #76b900;">Verification Code</h2>
+        <p>Please use the following OTP to verify your email and view your order history.</p>
+        <h1 style="letter-spacing: 5px; background: #f4f4f4; padding: 15px; border-radius: 10px;">${otp}</h1>
+        <p style="color: #777; font-size: 12px;">Valid for 10 minutes.</p>
+      </div>`
+    });
+
+    res.json({ message: "OTP sent" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ CUSTOMER AUTH: VERIFY OTP
+export const verifyCustomerOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!req.store) return res.status(400).json({ message: "Store context missing" });
+    const storeId = req.store._id;
+
+    const record = await CustomerOTP.findOne({ email, storeId, otp });
+    if (!record) return res.status(400).json({ message: "Invalid or expired OTP" });
+
+    await CustomerOTP.deleteOne({ _id: record._id });
+    const token = jwt.sign({ email, storeId: storeId.toString() }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '7d' });
+    res.json({ token, email });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ CUSTOMER AUTH: GET ORDERS
+export const getCustomerOrders = async (req, res) => {
+  try {
+    if (!req.store) return res.status(400).json({ message: "Store context missing" });
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) return res.status(401).json({ message: "No token provided" });
+    
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+    
+    if (decoded.storeId !== req.store._id.toString()) return res.status(403).json({ message: "Invalid token for this store" });
+
+    const orders = await Order.find({ store: req.store._id, customerEmail: decoded.email }).sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (error) {
+    res.status(401).json({ message: "Invalid or expired token" });
+  }
+};
+
+// ✅ GET ORDER (PUBLIC - FOR TRACKING)
+export const getPublicOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findById(id).populate('store', 'name websiteTitle logo favicon');
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    // Return only safe, non-sensitive data
+    const safeOrder = {
+      _id: order._id,
+      createdAt: order.createdAt,
+      orderStatus: order.orderStatus,
+      totalAmount: order.totalAmount,
+      discountAmount: order.discountAmount,
+      shippingCharge: order.shippingCharge,
+      orderItems: order.orderItems,
+      customerName: order.customerName, // Name only, no phone/email for privacy
+      store: order.store
+    };
+
+    res.json(safeOrder);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

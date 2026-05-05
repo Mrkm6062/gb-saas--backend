@@ -33,6 +33,8 @@ import couponRoutes from "./routes/couponRoutes.js";
 import storeAlertsRoutes from "./routes/storeAlertsRoutes.js";
 import customerRoutes from "./routes/customerRoutes.js";
 import deliveryRoutes from "./routes/deliveryRoutes.js";
+import checkoutRoutes from "./routes/checkoutRoutes.js";
+import { getPublicOrder, sendCustomerOtp, verifyCustomerOtp, getCustomerOrders } from "./controllers/orderController.js";
 
 
 dotenv.config();
@@ -132,6 +134,11 @@ app.use("/api/coupons", couponRoutes); // Coupons for stores
 app.use("/api/store-alerts", storeAlertsRoutes); // Custom Store Email Alerts
 app.use("/api/customers", customerRoutes); // Customer Management & Notes
 app.use("/api/delivery-settings", deliveryRoutes); // Delivery Settings
+app.use("/api/checkout-settings", checkoutRoutes); // Checkout & Payment Settings
+app.get("/api/public-order/:id", getPublicOrder); // Public order tracking
+app.post("/api/customers/auth/send-otp", sendCustomerOtp); // Customer OTP auth
+app.post("/api/customers/auth/verify-otp", verifyCustomerOtp); // Customer OTP verify
+app.get("/api/customers/auth/orders", getCustomerOrders); // Get Customer orders
 
 
 // Routes
