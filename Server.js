@@ -152,8 +152,16 @@ app.get("*", async (req, res) => {
     let html = cachedIndexHtml;
     
     if (req.store) {
-      const storeTitle = req.store.websiteTitle || req.store.name || "Store";
-      html = html.replace(/<title>.*?<\/title>/, `<title>${storeTitle}</title>`);
+      const storeTitle = req.store.websiteTitle || req.store.name;
+      let titleAndMeta = `<title>${storeTitle}</title>`;
+      
+      if (req.store.metaDescription) {
+        // Remove existing description meta tag if present to avoid duplicates
+        html = html.replace(/<meta\s+name=["']description["']\s+content=["'][^"']*["']\s*\/?>/i, '');
+        titleAndMeta += `\n    <meta name="description" content="${req.store.metaDescription}" />`;
+      }
+      
+      html = html.replace(/<title>.*?<\/title>/, titleAndMeta);
       
       if (req.store.favicon) {
         html = html.replace('href="/favicon.ico?v=2"', `href="${req.store.favicon}"`);
