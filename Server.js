@@ -152,7 +152,7 @@ app.get("*", async (req, res) => {
     let html = cachedIndexHtml;
     
     if (req.store) {
-      const storeTitle = req.store.websiteTitle || req.store.name;
+      const storeTitle = req.store.websiteTitle || req.store.name || "Loading...";
       let titleAndMeta = `<title>${storeTitle}</title>`;
       
       if (req.store.metaDescription) {
