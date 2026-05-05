@@ -149,14 +149,15 @@ app.use("/api/payment", paymentRoutes);
 const frontendPath = process.env.STOREFRONT_BUILD_PATH || path.join(__dirname, "../store-frontend/dist");
 app.use(express.static(frontendPath, { index: false }));
 
-let cachedIndexHtml = null;
-
 app.get("*", async (req, res) => {
+  // Prevent returning index.html for static assets (fixes MIME type errors)
+  if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|json|woff|woff2|ttf|eot)$/)) {
+    return res.status(404).send("Static file not found");
+  }
+
   try {
-    if (!cachedIndexHtml) {
-      cachedIndexHtml = await fs.readFile(path.join(frontendPath, "index.html"), "utf8");
-    }
-    let html = cachedIndexHtml;
+    // Read the file dynamically so it always has the latest built JS/CSS hashes
+    let html = await fs.readFile(path.join(frontendPath, "index.html"), "utf8");
     
     if (req.store) {
       const storeTitle = req.store.websiteTitle || req.store.name || "Loading...";
