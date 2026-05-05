@@ -36,7 +36,8 @@ const sendOrderConfirmationEmail = async (order, store) => {
         .replace(/{{orderId}}/g, order._id.toString().slice(-6).toUpperCase())
         .replace(/{{orderItems}}/g, `<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">${itemsHtml}</table>`)
         .replace(/{{totalAmount}}/g, order.totalAmount)
-        .replace(/{{discountAmount}}/g, order.discountAmount || 0);
+        .replace(/{{discountAmount}}/g, order.discountAmount || 0)
+        .replace(/{{shippingCharge}}/g, order.shippingCharge || 0);
     } else {
       html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
@@ -47,7 +48,8 @@ const sendOrderConfirmationEmail = async (order, store) => {
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">${itemsHtml}</table>
         <p style="text-align: right; font-size: 16px;"><strong>Total Amount: ₹${order.totalAmount}</strong></p>
         ${order.couponCode ? `<p style="text-align: right; color: green;">Discount Applied: -₹${order.discountAmount} (${order.couponCode})</p>` : ''}
-        <p style="margin-top: 30px; color: #777; font-size: 12px; text-align: center;">This is an automated email sent via Galibrand Cloud.</p>
+        ${order.shippingCharge > 0 ? `<p style="text-align: right; color: #555;">Shipping Charge: ₹${order.shippingCharge}</p>` : ''}
+        <p style="margin-top: 30px; color: #777; font-size: 12px; text-align: center;">This is an automated email sent via <strong>${store.storeName}</strong>.</p>
       </div>
       `;
     }
@@ -85,7 +87,8 @@ const sendStatusUpdateEmail = async (order, store, status) => {
       .replace(/{{orderId}}/g, order._id.toString().slice(-6).toUpperCase())
       .replace(/{{orderItems}}/g, `<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">${itemsHtml}</table>`)
       .replace(/{{totalAmount}}/g, order.totalAmount)
-      .replace(/{{discountAmount}}/g, order.discountAmount || 0);
+      .replace(/{{discountAmount}}/g, order.discountAmount || 0)
+      .replace(/{{shippingCharge}}/g, order.shippingCharge || 0);
 
     await transporter.sendMail({ from: `"${store.storeName}" <${config.emailAddress}>`, to: order.customerEmail, subject, html });
   } catch (err) {
@@ -104,7 +107,8 @@ export const createOrder = async (req, res) => {
       orderItems,
       totalAmount,
       couponCode,
-      discountAmount
+      discountAmount,
+      shippingCharge
     } = req.body;
 
     if (!req.store) {
@@ -123,6 +127,7 @@ export const createOrder = async (req, res) => {
       totalAmount,
       couponCode,
       discountAmount,
+      shippingCharge,
       paymentStatus: "pending",
       orderStatus: "placed"
     });

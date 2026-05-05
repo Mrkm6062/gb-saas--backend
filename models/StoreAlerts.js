@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const alertTemplateSchema = new mongoose.Schema({
   eventType: {
     type: String,
-    enum: ["order_placed", "order_shipped", "order_delivered", "order_canceled", "order_returned", "custom"],
+    enum: ["order_placed", "order_shipped", "order_delivered", "order_canceled", "order_returned", "custom", "bill_receipt"],
     required: true,
   },
   name: { type: String, required: true },

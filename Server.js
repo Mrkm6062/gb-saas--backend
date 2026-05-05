@@ -31,6 +31,7 @@ import { getPlatformSettings } from "./controllers/platformSettingsController.js
 import couponRoutes from "./routes/couponRoutes.js";
 import storeAlertsRoutes from "./routes/storeAlertsRoutes.js";
 import customerRoutes from "./routes/customerRoutes.js";
+import deliveryRoutes from "./routes/deliveryRoutes.js";
 
 
 dotenv.config();
@@ -128,6 +129,7 @@ app.use("/api/platform-settings", getPlatformSettings); // Public platform setti
 app.use("/api/coupons", couponRoutes); // Coupons for stores
 app.use("/api/store-alerts", storeAlertsRoutes); // Custom Store Email Alerts
 app.use("/api/customers", customerRoutes); // Customer Management & Notes
+app.use("/api/delivery-settings", deliveryRoutes); // Delivery Settings
 
 
 // Routes

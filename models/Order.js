@@ -38,6 +38,11 @@ const orderSchema = new mongoose.Schema(
     couponCode: String,
     discountAmount: { type: Number, default: 0 },
 
+    shippingCharge: {
+      type: Number,
+      default: 0,
+    },
+
     paymentStatus: {
       type: String,
       default: "pending", // pending / paid
