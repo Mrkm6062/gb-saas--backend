@@ -162,6 +162,11 @@ app.get("*", async (req, res) => {
     return res.status(404).send("Static file not found");
   }
 
+  // Prevent Cloudflare and browsers from caching the index.html and its security headers
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+
   try {
     // Read the file dynamically so it always has the latest built JS/CSS hashes
     let html = await fs.readFile(path.join(frontendPath, "index.html"), "utf8");
