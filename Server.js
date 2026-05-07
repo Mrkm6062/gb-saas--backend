@@ -75,12 +75,13 @@ app.use(
       directives: {
         defaultSrc: ["'self'"],
         imgSrc: ["'self'", "https://storage.googleapis.com", "data:", "blob:"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com"],
-        scriptSrcElem: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://checkout.razorpay.com"],
+        scriptSrcElem: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://checkout.razorpay.com"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         styleSrcElem: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com", "https://fonts.googleapis.com", "data:"],
-        connectSrc: ["'self'", "https://*.galibrand.cloud", "https://cloudflareinsights.com"],
+        connectSrc: ["'self'", "https://*.galibrand.cloud", "https://cloudflareinsights.com", "https://*.razorpay.com"],
+        frameSrc: ["'self'", "https://checkout.razorpay.com"],
       },
     },
   })
