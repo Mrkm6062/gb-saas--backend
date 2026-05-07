@@ -1,6 +1,7 @@
 import Store from "../models/Store.js";
 import Counter from "../models/Counter.js";
 import Plan from "../models/Plan.js";
+import Domain from "../models/Domain.js";
 import { storage } from "../gcs.js";
 
 // CREATE NEW STORE
@@ -29,29 +30,19 @@ export const createStore = async (req, res) => {
     );
     const storeId = `GBS${String(counter.seq).padStart(3, '0')}`;
 
-    // Calculate Plan Expiry Date (e.g., 7 days from creation)
+    // Calculate Plan Expiry Date based on 7 days trial
     const planStartDate = new Date();
+    const trialPlanDays = 7;
     const planExpiryDate = new Date();
-    planExpiryDate.setDate(planExpiryDate.getDate() + 7);
+    planExpiryDate.setDate(planExpiryDate.getDate() + trialPlanDays);
 
     if (!req.user || !req.user.userId) {
       return res.status(401).json({ message: "Unauthorized. User context is missing." });
     }
 
-    // Calculate how many stores the user is allowed to have based on their highest plan
-    const existingStores = await Store.find({ ownerId: req.user.userId, isDeleted: { $ne: true } }).populate('planId');
-    let maxStoresAllowed = 1; // Default fallback for free/new users
-    
-    for (const s of existingStores) {
-      if (s.planId && s.planId.features && s.planId.features.storeLimit) {
-        if (s.planId.features.storeLimit > maxStoresAllowed) {
-          maxStoresAllowed = s.planId.features.storeLimit;
-        }
-      }
-    }
-
-    if (existingStores.length >= maxStoresAllowed) {
-      return res.status(403).json({ message: `Store limit reached. Your current plan allows up to ${maxStoresAllowed} store(s). Please upgrade to create more.` });
+    const existingStores = await Store.find({ ownerId: req.user.userId, isDeleted: { $ne: true } });
+    if (existingStores.length >= 1) {
+      return res.status(403).json({ message: "Store limit reached. You can only create 1 store per account. Please create a new account for another store." });
     }
 
     const store = await Store.create({
@@ -66,7 +57,8 @@ export const createStore = async (req, res) => {
       planId: planId || null,
       planStartDate,
       planExpiryDate,
-      isTrialActive: true
+      isTrialActive: true,
+      trialPlanDays
     });
 
     res.status(201).json({ message: "Store created successfully!", store });
@@ -148,10 +140,20 @@ export const upgradeStorePlan = async (req, res) => {
 export const getMyStore = async (req, res) => {
   try {
     // Find all stores owned by the user (including soft-deleted for the recycle bin)
-    const stores = await Store.find({ ownerId: req.user.userId });
+    const stores = await Store.find({ ownerId: req.user.userId }).lean();
     
+    const domains = await Domain.find({
+      storeId: { $in: stores.map(s => s._id) },
+      status: 'connected'
+    }).lean();
+
+    const storesWithDomains = stores.map(store => {
+      const customDomain = domains.find(d => d.storeId.toString() === store._id.toString());
+      return { ...store, customDomain: customDomain ? customDomain.domain : null };
+    });
+
     // Always return a 200 OK with the stores array, even if empty
-    res.json({ stores });
+    res.json({ stores: storesWithDomains });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

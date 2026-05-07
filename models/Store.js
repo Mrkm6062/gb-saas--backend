@@ -15,6 +15,7 @@ const storeSchema = new mongoose.Schema({
   planStartDate: { type: Date },
   planExpiryDate: { type: Date },
   isTrialActive: { type: Boolean, default: true },
+  trialPlanDays: { type: Number, default: 7 },
   websiteTitle: { type: String },
   logo: { type: String },
   favicon: { type: String },
