@@ -26,9 +26,17 @@ export const getAllDefaultProducts = async (req, res) => {
 // CREATE DEFAULT PRODUCT
 export const createDefaultProduct = async (req, res) => {
   try {
-    const product = await DefaultProduct.create(req.body);
+    const payload = { ...req.body };
+    
+    // Auto-generate a unique slug to prevent MongoDB duplicate key errors
+    if (payload.name) {
+      payload.slug = payload.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now();
+    }
+
+    const product = await DefaultProduct.create(payload);
     res.status(201).json({ message: "Default product created successfully", product });
   } catch (error) {
+    console.error("Default Product Create Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -36,10 +44,20 @@ export const createDefaultProduct = async (req, res) => {
 // UPDATE DEFAULT PRODUCT
 export const updateDefaultProduct = async (req, res) => {
   try {
-    const product = await DefaultProduct.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const payload = { ...req.body };
+    
+    // Ensure a slug exists during updates to prevent unique index constraints from failing
+    if (!payload.slug && payload.name) {
+      payload.slug = payload.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now();
+    }
+
+    const product = await DefaultProduct.findByIdAndUpdate(req.params.id, payload, { new: true });
+    
     if (!product) return res.status(404).json({ message: "Default product not found" });
+    
     res.json({ message: "Default product updated successfully", product });
   } catch (error) {
+    console.error("Default Product Update Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
