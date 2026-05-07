@@ -75,11 +75,19 @@ export const createSubscriptionOrder = async (req, res) => {
     }
 
     const instance = new Razorpay({ key_id: settings.razorpayKeyId, key_secret: keySecret });
-    const options = { amount: amount * 100, currency: "INR", receipt: `sub_rcpt_${storeId}_${Date.now()}` };
+    
+    // Ensure receipt is under 40 chars max (Razorpay limit)
+    const safeStoreId = storeId ? storeId.toString().slice(-10) : 'store';
+    const receipt = `sub_${safeStoreId}_${Date.now()}`.substring(0, 40);
+    
+    const options = { amount: Math.round(amount * 100), currency: "INR", receipt };
     
     const order = await instance.orders.create(options);
     res.json(order);
-  } catch (error) { res.status(500).json({ message: error.message }); }
+  } catch (error) { 
+    const errorMsg = error.error ? error.error.description : error.message;
+    res.status(500).json({ message: errorMsg || "Failed to create payment order" }); 
+  }
 };
 
 export const verifyPayment = async (req, res) => {
