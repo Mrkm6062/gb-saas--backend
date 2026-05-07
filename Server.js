@@ -75,15 +75,16 @@ app.use(
       directives: {
         defaultSrc: ["'self'"],
         imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://checkout.razorpay.com"],
-        scriptSrcElem: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://checkout.razorpay.com"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://checkout.razorpay.com", "https://cdn.razorpay.com"],
+        scriptSrcElem: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://checkout.razorpay.com", "https://cdn.razorpay.com"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         styleSrcElem: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com", "https://fonts.googleapis.com", "data:"],
         connectSrc: ["'self'", "https:", "http:"],
-        frameSrc: ["'self'", "https://checkout.razorpay.com"],
+        frameSrc: ["'self'", "https://checkout.razorpay.com", "https://api.razorpay.com"],
       },
     },
+    contentSecurityPolicy: false,
   })
 );
 
