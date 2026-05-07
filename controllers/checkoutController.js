@@ -1,5 +1,6 @@
 import CheckoutSettings from "../models/CheckoutSettings.js";
 import Store from "../models/Store.js";
+import { encrypt, decrypt } from "../utils/crypto.js";
 
 export const getPublicCheckoutSettings = async (req, res) => {
   try {
@@ -34,7 +35,13 @@ export const getCheckoutSettings = async (req, res) => {
     if (!settings) {
       settings = await CheckoutSettings.create({ storeId });
     }
-    res.json(settings);
+
+    // Decrypt secret before sending to admin UI
+    const responseSettings = settings.toObject();
+    if (responseSettings.razorpayKeySecret) {
+      responseSettings.razorpayKeySecret = decrypt(responseSettings.razorpayKeySecret);
+    }
+    res.json(responseSettings);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -46,8 +53,24 @@ export const updateCheckoutSettings = async (req, res) => {
     const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId });
     if (!store) return res.status(403).json({ message: "Not authorized" });
 
-    const settings = await CheckoutSettings.findOneAndUpdate({ storeId }, { codEnabled, whatsappEnabled, whatsappNumber, razorpayEnabled, razorpayKeyId, razorpayKeySecret }, { new: true, upsert: true });
-    res.json(settings);
+    const updateData = { codEnabled, whatsappEnabled, whatsappNumber, razorpayEnabled, razorpayKeyId };
+
+    // Only update the secret if it's part of the request body
+    if (req.body.hasOwnProperty('razorpayKeySecret')) {
+      if (razorpayKeySecret) {
+        updateData.razorpayKeySecret = encrypt(razorpayKeySecret);
+      } else {
+        updateData.razorpayKeySecret = null; // Clear if empty string is provided
+      }
+    }
+
+    const settings = await CheckoutSettings.findOneAndUpdate({ storeId }, updateData, { new: true, upsert: true });
+
+    const responseSettings = settings.toObject();
+    if (responseSettings.razorpayKeySecret) {
+      responseSettings.razorpayKeySecret = decrypt(responseSettings.razorpayKeySecret);
+    }
+    res.json(responseSettings);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

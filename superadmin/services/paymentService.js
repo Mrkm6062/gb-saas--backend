@@ -1,18 +1,21 @@
 import Razorpay from "razorpay";
+import PlatformPaymentSettings from "../../models/PlatformPaymentSettings.js";
 
-const getRazorpayInstance = () => {
-  if (!process.env.RAZORPAY_KEY || !process.env.RAZORPAY_SECRET) {
-    throw new Error("Razorpay keys missing in environment variables");
+const getRazorpayInstance = async () => {
+  const settings = await PlatformPaymentSettings.findOne();
+  
+  if (!settings || !settings.razorpayEnabled || !settings.razorpayKeyId || !settings.razorpayKeySecret) {
+    throw new Error("Razorpay keys missing in platform settings or gateway is disabled");
   }
 
   return new Razorpay({
-    key_id: process.env.RAZORPAY_KEY,
-    key_secret: process.env.RAZORPAY_SECRET,
+    key_id: settings.razorpayKeyId,
+    key_secret: settings.razorpayKeySecret,
   });
 };
 
 export const createPaymentOrder = async (amount) => {
-  const razorpay = getRazorpayInstance(); // ✅ INIT HERE (AFTER ENV LOAD)
+  const razorpay = await getRazorpayInstance(); 
 
   const options = {
     amount: amount * 100,

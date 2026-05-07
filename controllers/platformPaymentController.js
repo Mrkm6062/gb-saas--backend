@@ -2,6 +2,7 @@ import PlatformPaymentSettings from "../models/PlatformPaymentSettings.js";
 import Store from "../models/Store.js";
 import Razorpay from "razorpay";
 import crypto from "crypto";
+import { encrypt, decrypt } from "../utils/crypto.js";
 
 export const getSettings = async (req, res) => {
   try {
@@ -10,7 +11,13 @@ export const getSettings = async (req, res) => {
     
     let settings = await PlatformPaymentSettings.findOne();
     if (!settings) settings = await PlatformPaymentSettings.create({});
-    res.json(settings);
+
+    // Decrypt secret before sending to admin UI
+    const responseSettings = settings.toObject();
+    if (responseSettings.razorpayKeySecret) {
+      responseSettings.razorpayKeySecret = decrypt(responseSettings.razorpayKeySecret);
+    }
+    res.json(responseSettings);
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
@@ -24,10 +31,24 @@ export const updateSettings = async (req, res) => {
     
     settings.razorpayEnabled = razorpayEnabled;
     settings.razorpayKeyId = razorpayKeyId;
-    settings.razorpayKeySecret = razorpayKeySecret;
+
+    // Only update the secret if it's part of the request body
+    if (req.body.hasOwnProperty('razorpayKeySecret')) {
+      if (razorpayKeySecret) {
+        settings.razorpayKeySecret = encrypt(razorpayKeySecret);
+      } else {
+        settings.razorpayKeySecret = null; // Clear if empty string is provided
+      }
+    }
+
     await settings.save();
     
-    res.json(settings);
+    // Return the updated settings with the secret decrypted for the UI
+    const responseSettings = settings.toObject();
+    if (responseSettings.razorpayKeySecret) {
+      responseSettings.razorpayKeySecret = decrypt(responseSettings.razorpayKeySecret);
+    }
+    res.json(responseSettings);
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
@@ -48,7 +69,12 @@ export const createSubscriptionOrder = async (req, res) => {
     
     if (!settings || !settings.razorpayEnabled) return res.status(400).json({ message: "Razorpay is not enabled on platform" });
 
-    const instance = new Razorpay({ key_id: settings.razorpayKeyId, key_secret: settings.razorpayKeySecret });
+    const keySecret = decrypt(settings.razorpayKeySecret);
+    if (!keySecret) {
+      return res.status(500).json({ message: "Razorpay secret key is missing or corrupted." });
+    }
+
+    const instance = new Razorpay({ key_id: settings.razorpayKeyId, key_secret: keySecret });
     const options = { amount: amount * 100, currency: "INR", receipt: `sub_rcpt_${storeId}_${Date.now()}` };
     
     const order = await instance.orders.create(options);
@@ -61,8 +87,13 @@ export const verifyPayment = async (req, res) => {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, storeId, planId } = req.body;
     const settings = await PlatformPaymentSettings.findOne();
 
+    const keySecret = decrypt(settings.razorpayKeySecret);
+    if (!keySecret) {
+      return res.status(500).json({ message: "Razorpay secret key is missing or corrupted." });
+    }
+
     const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSignature = crypto.createHmac("sha256", settings.razorpayKeySecret).update(body.toString()).digest("hex");
+    const expectedSignature = crypto.createHmac("sha256", keySecret).update(body.toString()).digest("hex");
 
     if (expectedSignature === razorpay_signature) {
       // Payment is authentic -> Mark store as active/paid
