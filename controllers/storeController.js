@@ -1,6 +1,7 @@
 import Store from "../models/Store.js";
 import Counter from "../models/Counter.js";
 import Plan from "../models/Plan.js";
+import { storage } from "../gcs.js";
 
 // CREATE NEW STORE
 export const createStore = async (req, res) => {
@@ -38,7 +39,7 @@ export const createStore = async (req, res) => {
     }
 
     // Calculate how many stores the user is allowed to have based on their highest plan
-    const existingStores = await Store.find({ ownerId: req.user.userId }).populate('planId');
+    const existingStores = await Store.find({ ownerId: req.user.userId, isDeleted: { $ne: true } }).populate('planId');
     let maxStoresAllowed = 1; // Default fallback for free/new users
     
     for (const s of existingStores) {
@@ -87,6 +88,7 @@ export const updateStore = async (req, res) => {
     } else {
       query.storeId = id;
     }
+    query.isDeleted = { $ne: true };
 
     const store = await Store.findOne(query);
 
@@ -118,7 +120,7 @@ export const upgradeStorePlan = async (req, res) => {
     const { planId } = req.body;
 
     // Ensure the store belongs to the authenticated user
-    const store = await Store.findOne({ _id: id, ownerId: req.user.userId });
+    const store = await Store.findOne({ _id: id, ownerId: req.user.userId, isDeleted: { $ne: true } });
     if (!store) {
       return res.status(404).json({ message: "Store not found or unauthorized" });
     }
@@ -145,11 +147,31 @@ export const upgradeStorePlan = async (req, res) => {
 // GET CURRENT STORE
 export const getMyStore = async (req, res) => {
   try {
-    // Find all stores owned by the user
+    // Find all stores owned by the user (including soft-deleted for the recycle bin)
     const stores = await Store.find({ ownerId: req.user.userId });
     
     // Always return a 200 OK with the stores array, even if empty
     res.json({ stores });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// RESTORE DELETED STORE
+export const restoreStore = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const store = await Store.findOneAndUpdate(
+      { _id: id, ownerId: req.user.userId, isDeleted: true },
+      { isDeleted: false, deletedAt: null, status: 'active' },
+      { new: true }
+    );
+    
+    if (!store) {
+      return res.status(404).json({ message: "Store not found or unauthorized" });
+    }
+
+    res.json({ message: "Store restored successfully.", store });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -198,7 +220,7 @@ export const getStoreBySubdomain = async (req, res) => {
   try {
     const { subdomain } = req.params;
 
-    const store = await Store.findOne({ storeSlug: subdomain });
+    const store = await Store.findOne({ storeSlug: subdomain, isDeleted: { $ne: true } });
 
     if (!store) {
       return res.status(404).json({ message: "Store not found" });
@@ -213,11 +235,31 @@ export const getStoreBySubdomain = async (req, res) => {
 // GET RESOLVED STORE DATA (Public Storefront)
 export const getStoreData = async (req, res) => {
   try {
-    if (!req.store) {
+    if (!req.store || req.store.isDeleted) {
       return res.status(404).json({ message: "Store not found" });
     }
     // Optionally, exclude sensitive data here if needed before returning
     res.json(req.store);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// DELETE STORE
+export const deleteStore = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const store = await Store.findOneAndUpdate(
+      { _id: id, ownerId: req.user.userId, isDeleted: { $ne: true } },
+      { isDeleted: true, deletedAt: new Date(), status: 'suspended' },
+      { new: true }
+    );
+    
+    if (!store) {
+      return res.status(404).json({ message: "Store not found or unauthorized" });
+    }
+
+    res.json({ message: "Store moved to recycle bin. It will be permanently deleted in 30 days." });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

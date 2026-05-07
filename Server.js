@@ -37,6 +37,7 @@ import checkoutRoutes from "./routes/checkoutRoutes.js";
 import { getPublicOrder, sendCustomerOtp, verifyCustomerOtp, getCustomerOrders } from "./controllers/orderController.js";
 import platformPaymentRoutes from "./routes/platformPaymentRoutes.js";
 import { startSubscriptionReminderCron } from "./middleware/subscriptionReminder.js";
+import { startCleanupDeletedStoresCron } from "./middleware/cleanupDeletedStores.js";
 
 
 dotenv.config();
@@ -49,6 +50,7 @@ const app = express();
 
 // Initialize scheduled cron jobs
 startSubscriptionReminderCron();
+startCleanupDeletedStoresCron();
 
 app.set('trust proxy', 1);
 

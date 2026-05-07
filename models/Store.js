@@ -19,7 +19,9 @@ const storeSchema = new mongoose.Schema({
   logo: { type: String },
   favicon: { type: String },
   banner: { type: String },
-  theme: { type: String, default: "default" }
+  theme: { type: String, default: "default" },
+  isDeleted: { type: Boolean, default: false },
+  deletedAt: { type: Date }
 }, {
   timestamps: true
 });

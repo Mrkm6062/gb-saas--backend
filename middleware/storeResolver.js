@@ -24,7 +24,7 @@ export const storeResolver = async (req, res, next) => {
     // FIRST -> Check custom domain
     const domainRecord = await Domain.findOne({ domain: normalizedHost, status: "connected" });
     if (domainRecord) {
-      store = await Store.findById(domainRecord.storeId).populate('planId');
+      store = await Store.findOne({ _id: domainRecord.storeId, isDeleted: { $ne: true } }).populate('planId');
     }
 
     // SECOND -> Fallback to subdomain (if no custom domain match)
@@ -33,7 +33,7 @@ export const storeResolver = async (req, res, next) => {
       const ignored = ["www", "api", "dashboard", "cname", "store"];
       
       if (!ignored.includes(subdomain)) {
-        store = await Store.findOne({ storeSlug: subdomain }).populate('planId');
+        store = await Store.findOne({ storeSlug: subdomain, isDeleted: { $ne: true } }).populate('planId');
       }
     }
 
