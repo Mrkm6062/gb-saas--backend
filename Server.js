@@ -74,13 +74,13 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        imgSrc: ["'self'", "https://storage.googleapis.com", "data:", "blob:"],
+        imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
         scriptSrc: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://checkout.razorpay.com"],
         scriptSrcElem: ["'self'", "'unsafe-inline'", "https://static.cloudflareinsights.com", "https://checkout.razorpay.com"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         styleSrcElem: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com", "https://fonts.googleapis.com", "data:"],
-        connectSrc: ["'self'", "https://*.galibrand.cloud", "https://cloudflareinsights.com", "https://*.razorpay.com"],
+        connectSrc: ["'self'", "https:", "http:"],
         frameSrc: ["'self'", "https://checkout.razorpay.com"],
       },
     },
