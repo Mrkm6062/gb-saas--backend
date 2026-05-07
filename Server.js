@@ -36,7 +36,7 @@ import deliveryRoutes from "./routes/deliveryRoutes.js";
 import checkoutRoutes from "./routes/checkoutRoutes.js";
 import { getPublicOrder, sendCustomerOtp, verifyCustomerOtp, getCustomerOrders } from "./controllers/orderController.js";
 import platformPaymentRoutes from "./routes/platformPaymentRoutes.js";
-import { startSubscriptionReminderCron } from "./cron/subscriptionReminder.js";
+import { startSubscriptionReminderCron } from "./middleware/subscriptionReminder.js";
 
 
 dotenv.config();
