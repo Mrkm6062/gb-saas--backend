@@ -43,23 +43,10 @@ const productSchema = new mongoose.Schema({
   // Example:
   // "vegetable", "nasta", "restaurant", "clothes", "kirana"
 
-  // 🔹 BRAND / STORE (multi-tenant)
-  storeId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "Store", 
-    required: true // Ensures product always belongs to a specific store
-  },
-
-  // 🔹 IMPORT TRACKING (To prevent duplicate default imports)
-  source: { 
-    type: String, 
-    enum: ["custom", "default"], 
-    default: "custom" 
-  },
-  defaultProductId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: "DefaultProduct" 
-  },
+  // 🔹 STORE TYPES (Used to group default products)
+  storeTypes: [{ 
+    type: String 
+  }],
 
   // 🔹 IMAGES
   images: [String],
@@ -99,4 +86,4 @@ const productSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-export default mongoose.models.Product || mongoose.model("Product", productSchema);
+export default mongoose.models.DefaultProduct || mongoose.model("DefaultProduct", productSchema);

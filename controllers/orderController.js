@@ -7,6 +7,10 @@ import DeliverySettings from "../models/DeliverySettings.js";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 import CustomerOTP from "../models/CustomerOTP.js";
+import CheckoutSettings from "../models/CheckoutSettings.js";
+import Razorpay from "razorpay";
+import crypto from "crypto";
+import { decrypt } from "../utils/crypto.js";
 
 // Internal Helper function to send order confirmation email asynchronously
 const sendOrderConfirmationEmail = async (order, store) => {
@@ -179,12 +183,65 @@ export const createOrder = async (req, res) => {
       await Coupon.updateOne({ storeId: store._id, code: couponCode }, { $inc: { usageCount: 1 } });
     }
 
+    let razorpayOrder = null;
+    if (paymentMethod === 'razorpay') {
+      try {
+        const settings = await CheckoutSettings.findOne({ storeId: store._id });
+        if (!settings || !settings.razorpayEnabled || !settings.razorpayKeyId || !settings.razorpayKeySecret) {
+          throw new Error("Razorpay is not fully configured for this store.");
+        }
+        const keySecret = decrypt(settings.razorpayKeySecret);
+        if (!keySecret) throw new Error("Razorpay secret key is corrupted.");
+
+        const instance = new Razorpay({ key_id: settings.razorpayKeyId, key_secret: keySecret });
+        
+        const safeOrderId = order._id.toString().slice(-10);
+        const receipt = `rcpt_${safeOrderId}_${Date.now()}`.substring(0, 40);
+
+        razorpayOrder = await instance.orders.create({
+          amount: Math.round(totalAmount * 100),
+          currency: "INR",
+          receipt
+        });
+      } catch (rzpErr) {
+        console.error("Razorpay order creation failed:", rzpErr);
+        // Return 201 because the DB order IS created, but flag the error
+        return res.status(201).json({ order, razorpayOrder: null, message: "Order placed but payment gateway failed to load." });
+      }
+    }
+
     // Fire and forget email notification
     sendOrderConfirmationEmail(order, store).catch(console.error);
 
-    res.status(201).json(order);
+    res.status(201).json({ order, razorpayOrder });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ VERIFY RAZORPAY PAYMENT (PUBLIC)
+export const verifyRazorpayPayment = async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId } = req.body;
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+
+    const settings = await CheckoutSettings.findOne({ storeId: order.store });
+    if (!settings) return res.status(400).json({ success: false, message: "Checkout settings not found" });
+
+    const keySecret = decrypt(settings.razorpayKeySecret);
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSignature = crypto.createHmac("sha256", keySecret).update(body.toString()).digest("hex");
+
+    if (expectedSignature === razorpay_signature) {
+      order.paymentStatus = "paid";
+      await order.save();
+      res.json({ success: true, message: "Payment verified successfully" });
+    } else {
+      res.status(400).json({ success: false, message: "Invalid signature" });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

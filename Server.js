@@ -38,6 +38,8 @@ import { getPublicOrder, sendCustomerOtp, verifyCustomerOtp, getCustomerOrders }
 import platformPaymentRoutes from "./routes/platformPaymentRoutes.js";
 import { startSubscriptionReminderCron } from "./middleware/subscriptionReminder.js";
 import { startCleanupDeletedStoresCron } from "./middleware/cleanupDeletedStores.js";
+import defaultProductRoutes from "./routes/defaultProductRoutes.js";
+import superadminDefaultProductRoutes from "./routes/superadminDefaultProductRoutes.js";
 
 
 dotenv.config();
@@ -128,7 +130,9 @@ app.get("/api/status", (req, res) => {
 app.use("/api/auth", authRoutes); // Users can login/register
 app.use("/api/store", storeRoutes); // Users can create/manage their stores
 app.use("/api/products", productRoutes); // Admin product management
+app.use("/api/default-products", defaultProductRoutes); // Default products catalog
 app.use("/api/superadmin", superadminRoutes); // Superadmin access
+app.use("/api/superadmin/default-products", superadminDefaultProductRoutes); // Superadmin Default Products
 app.use("/api/plans", planRoutes); // Public plan fetching
 app.use("/api/orders", orderRoutes); // Orders (handles both storefront & admin)
 app.use("/api/policies", policyRoutes); // Store policies (handles both storefront & admin)
