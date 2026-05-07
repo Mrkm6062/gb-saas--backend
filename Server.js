@@ -35,6 +35,7 @@ import customerRoutes from "./routes/customerRoutes.js";
 import deliveryRoutes from "./routes/deliveryRoutes.js";
 import checkoutRoutes from "./routes/checkoutRoutes.js";
 import { getPublicOrder, sendCustomerOtp, verifyCustomerOtp, getCustomerOrders } from "./controllers/orderController.js";
+import platformPaymentRoutes from "./routes/platformPaymentRoutes.js";
 
 
 dotenv.config();
@@ -139,6 +140,7 @@ app.get("/api/public-order/:id", getPublicOrder); // Public order tracking
 app.post("/api/customers/auth/send-otp", sendCustomerOtp); // Customer OTP auth
 app.post("/api/customers/auth/verify-otp", verifyCustomerOtp); // Customer OTP verify
 app.get("/api/customers/auth/orders", getCustomerOrders); // Get Customer orders
+app.use("/api/platform-payments", platformPaymentRoutes); // Superadmin SaaS Payments
 
 
 // Routes
