@@ -96,8 +96,18 @@ export const verifyPayment = async (req, res) => {
     const expectedSignature = crypto.createHmac("sha256", keySecret).update(body.toString()).digest("hex");
 
     if (expectedSignature === razorpay_signature) {
-      // Payment is authentic -> Mark store as active/paid
-      await Store.findByIdAndUpdate(storeId, { subscriptionStatus: 'active', plan: planId || 'paid' });
+      const planExpiryDate = new Date();
+      planExpiryDate.setDate(planExpiryDate.getDate() + 30); // Grant 30 days of access
+
+      await Store.findByIdAndUpdate(storeId, { 
+        subscriptionStatus: 'active', 
+        planId: planId,
+        isTrialActive: false,
+        planStartDate: new Date(),
+        planExpiryDate: planExpiryDate,
+        lastPaymentId: razorpay_payment_id // Log the payment confirmation
+      }, { strict: false }); // Ensures the ID writes correctly even if strict mode limits fields initially
+
       res.json({ message: "Payment verified successfully", success: true });
     } else {
       res.status(400).json({ message: "Invalid signature", success: false });

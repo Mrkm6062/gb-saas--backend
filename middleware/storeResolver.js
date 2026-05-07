@@ -44,8 +44,8 @@ export const storeResolver = async (req, res, next) => {
       }
 
       // Automatically expire the subscription if the end date has passed
-      if (store.subscriptionStatus !== 'expired' && store.planExpiryDate && new Date() > store.planExpiryDate) {
-        store.subscriptionStatus = 'expired';
+      if (store.subscriptionStatus !== 'pending' && store.planExpiryDate && new Date() > store.planExpiryDate) {
+        store.subscriptionStatus = 'pending';
         store.isTrialActive = false;
         await store.save();
       }

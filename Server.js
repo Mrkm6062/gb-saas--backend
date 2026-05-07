@@ -36,6 +36,7 @@ import deliveryRoutes from "./routes/deliveryRoutes.js";
 import checkoutRoutes from "./routes/checkoutRoutes.js";
 import { getPublicOrder, sendCustomerOtp, verifyCustomerOtp, getCustomerOrders } from "./controllers/orderController.js";
 import platformPaymentRoutes from "./routes/platformPaymentRoutes.js";
+import { startSubscriptionReminderCron } from "./cron/subscriptionReminder.js";
 
 
 dotenv.config();
@@ -45,6 +46,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// Initialize scheduled cron jobs
+startSubscriptionReminderCron();
 
 app.set('trust proxy', 1);
 
