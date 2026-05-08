@@ -129,12 +129,19 @@ export const updateProduct = async (req, res) => {
 
     if (variants !== undefined) {
       product.variants = variants;
-      product.totalStock = variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
-      if (basePrice === undefined && variants.length > 0) product.basePrice = variants[0].price;
+      if (variants.length > 0) {
+        product.totalStock = variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+        if (basePrice === undefined) product.basePrice = variants[0].price;
+      } else if (totalStock !== undefined || stock !== undefined) {
+        product.totalStock = totalStock !== undefined ? totalStock : stock;
+      }
     } else if (totalStock !== undefined || stock !== undefined) {
       product.totalStock = totalStock !== undefined ? totalStock : stock;
     }
-    if (basePrice !== undefined || price !== undefined) product.basePrice = basePrice !== undefined ? basePrice : price;
+    
+    if (basePrice !== undefined || price !== undefined) {
+      product.basePrice = basePrice !== undefined ? basePrice : price;
+    }
 
     const updated = await product.save();
 
