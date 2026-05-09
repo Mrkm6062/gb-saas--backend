@@ -54,9 +54,11 @@ export const createProduct = async (req, res) => {
       images: images || [],
       variants: variants || [],
       basePrice: calculatedBasePrice,
+      price: calculatedBasePrice,
       unitType,
       tags: tags || [],
       totalStock: calculatedTotalStock,
+      stock: calculatedTotalStock,
       isActive: isActive !== undefined ? isActive : true,
       seo
     });
@@ -131,16 +133,23 @@ export const updateProduct = async (req, res) => {
       product.variants = variants;
       if (variants.length > 0) {
         product.totalStock = variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
-        if (basePrice === undefined) product.basePrice = variants[0].price;
+        product.stock = product.totalStock;
+        if (basePrice === undefined && price === undefined) {
+          product.basePrice = variants[0].price;
+          product.price = variants[0].price;
+        }
       } else if (totalStock !== undefined || stock !== undefined) {
         product.totalStock = totalStock !== undefined ? totalStock : stock;
+        product.stock = product.totalStock;
       }
     } else if (totalStock !== undefined || stock !== undefined) {
       product.totalStock = totalStock !== undefined ? totalStock : stock;
+      product.stock = product.totalStock;
     }
     
     if (basePrice !== undefined || price !== undefined) {
       product.basePrice = basePrice !== undefined ? basePrice : price;
+      product.price = product.basePrice;
     }
 
     const updated = await product.save();
