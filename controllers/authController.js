@@ -40,7 +40,7 @@ export const sendOtp = async (req, res) => {
 
     // Generate 6 digit OTP and expiration
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // Expires in 10 minutes
+    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // Expires in 5 minutes
 
     if (!isLogin && !user) {
       if (!name) return res.status(400).json({ message: "Name is required to register." });
@@ -71,7 +71,7 @@ export const sendOtp = async (req, res) => {
           <h2>Hello ${user.name},</h2>
           <p>Your One-Time Password (OTP) to access your Galibrand Dashboard is:</p>
           <h1 style="color: #76b900; letter-spacing: 5px;">${otp}</h1>
-          <p>This OTP is valid for 10 minutes. Please do not share it with anyone.</p>
+          <p>This OTP is valid for 5 minutes. Please do not share it with anyone.</p>
         </div>
       `,
     };
@@ -93,14 +93,21 @@ export const verifyOtp = async (req, res) => {
     const normalizedEmail = email.toLowerCase();
     const user = await User.findOne({ email: normalizedEmail });
 
-    if (!user || user.otp !== otp || user.otpExpiry < new Date()) {
+    if (!user || !user.otp) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
-    // Clear OTP after successful validation
+    const isValidOtp = user.otp === otp;
+    const isExpired = user.otpExpiry < new Date();
+
+    // Burn OTP immediately on any attempt to prevent brute-forcing
     user.otp = undefined;
     user.otpExpiry = undefined;
     await user.save();
+
+    if (!isValidOtp || isExpired) {
+      return res.status(400).json({ message: "Invalid or expired OTP. Please request a new one." });
+    }
 
     const stores = await Store.find({ ownerId: user.userId });
 

@@ -275,7 +275,7 @@ export const sendCustomerOtp = async (req, res) => {
         <h2 style="color: #76b900;">Verification Code</h2>
         <p>Please use the following OTP to verify your email and view your order history.</p>
         <h1 style="letter-spacing: 5px; background: #f4f4f4; padding: 15px; border-radius: 10px;">${otp}</h1>
-        <p style="color: #777; font-size: 12px;">Valid for 10 minutes.</p>
+        <p style="color: #777; font-size: 12px;">Valid for 5 minutes.</p>
       </div>`
     });
 
@@ -292,10 +292,16 @@ export const verifyCustomerOtp = async (req, res) => {
     if (!req.store) return res.status(400).json({ message: "Store context missing" });
     const storeId = req.store._id;
 
-    const record = await CustomerOTP.findOne({ email, storeId, otp });
+    const record = await CustomerOTP.findOne({ email, storeId });
     if (!record) return res.status(400).json({ message: "Invalid or expired OTP" });
 
+    // Burn the OTP record immediately to prevent brute-forcing
     await CustomerOTP.deleteOne({ _id: record._id });
+
+    if (record.otp !== otp) {
+      return res.status(400).json({ message: "Invalid or expired OTP. Please request a new one." });
+    }
+
     const token = jwt.sign({ email, storeId: storeId.toString() }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '7d' });
     res.json({ token, email });
   } catch (error) {
