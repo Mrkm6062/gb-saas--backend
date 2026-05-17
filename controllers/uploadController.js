@@ -12,16 +12,39 @@ export const uploadImages = async (req, res) => {
     if (!storeId) return res.status(400).json({ message: "Store ID is required" });
 
     let storeFolder = "superadmin";
+    let storageLimitMB = null;
     
     // Only look up the store if it's not a Superadmin global upload
     if (storeId !== "000000000000000000000000") {
-      const store = await Store.findById(storeId);
+      const store = await Store.findById(storeId).populate('planId');
       if (!store) return res.status(404).json({ message: "Store not found" });
       storeFolder = store.storeSlug || store.storeId;
+      
+      // Determine storage limit from plan or default to 500MB
+      storageLimitMB = store.planId?.features?.storageLimit || 500;
     }
 
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: "No files uploaded" });
+    }
+
+    // Storage limit check for standard stores
+    if (storageLimitMB !== null) {
+      const limitBytes = storageLimitMB * 1024 * 1024;
+      
+      // Calculate incoming files size
+      const incomingBytes = req.files.reduce((sum, file) => sum + file.size, 0);
+      
+      // Calculate current used storage in GCS
+      const prefix = `${storeFolder}/`;
+      const [existingFiles] = await bucket.getFiles({ prefix });
+      const currentUsedBytes = existingFiles.reduce((sum, file) => sum + parseInt(file.metadata.size || 0, 10), 0);
+      
+      if (currentUsedBytes + incomingBytes > limitBytes) {
+        return res.status(403).json({ 
+          message: `Storage limit exceeded. Your plan allows up to ${storageLimitMB >= 1000 ? storageLimitMB/1000 + 'GB' : storageLimitMB + 'MB'}. Please delete old media or upgrade your plan.` 
+        });
+      }
     }
 
     // Validate that all uploaded files are strictly images (both MIME and actual content)

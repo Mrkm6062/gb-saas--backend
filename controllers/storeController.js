@@ -71,7 +71,7 @@ export const createStore = async (req, res) => {
 export const updateStore = async (req, res) => {
   try {
     const { id } = req.params; // Can be MongoDB _id or custom storeId (e.g., GBS001)
-    const { storeName, websiteTitle, logo, favicon, banner, category, storeType } = req.body;
+    const { storeName, websiteTitle, logo, favicon, banner, category, storeType, theme } = req.body;
 
     // Ensure the store belongs to the authenticated user
     const query = { ownerId: req.user.userId };
@@ -96,6 +96,7 @@ export const updateStore = async (req, res) => {
     if (banner !== undefined) store.banner = banner;
     if (category !== undefined) store.category = category;
     if (storeType !== undefined) store.storeType = storeType;
+    if (theme !== undefined) store.theme = theme;
 
     await store.save();
 
