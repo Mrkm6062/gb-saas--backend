@@ -3,6 +3,7 @@ import Counter from "../models/Counter.js";
 import Plan from "../models/Plan.js";
 import Domain from "../models/Domain.js";
 import { storage } from "../gcs.js";
+import Theme from "../models/Theme.js";
 
 // CREATE NEW STORE
 export const createStore = async (req, res) => {
@@ -241,8 +242,17 @@ export const getStoreData = async (req, res) => {
     if (!req.store || req.store.isDeleted) {
       return res.status(404).json({ message: "Store not found" });
     }
-    // Optionally, exclude sensitive data here if needed before returning
-    res.json(req.store);
+    
+    let storeObj = req.store.toObject ? req.store.toObject() : { ...req.store };
+    
+    if (storeObj.theme) {
+      const themeDoc = await Theme.findOne({ themeId: storeObj.theme });
+      if (themeDoc && themeDoc.themeFolder) {
+        storeObj.themeFolder = themeDoc.themeFolder;
+      }
+    }
+
+    res.json(storeObj);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
