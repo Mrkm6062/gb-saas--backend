@@ -31,11 +31,16 @@ export const createStore = async (req, res) => {
     );
     const storeId = `GBS${String(counter.seq).padStart(3, '0')}`;
 
-    // Calculate Plan Expiry Date based on 7 days trial
-    const planStartDate = new Date();
+    // As per new requirement for the first-time store creation:
+    // The first 7 days are a trial period.
+    // The plan's official start date is after the trial.
+    // The plan's expiry is 1 month after the official start date.
     const trialPlanDays = 7;
-    const planExpiryDate = new Date();
-    planExpiryDate.setDate(planExpiryDate.getDate() + trialPlanDays);
+    const planStartDate = new Date();
+    planStartDate.setDate(planStartDate.getDate() + trialPlanDays);
+
+    const planExpiryDate = new Date(planStartDate);
+    planExpiryDate.setMonth(planExpiryDate.getMonth() + 1);
 
     if (!req.user || !req.user.userId) {
       return res.status(401).json({ message: "Unauthorized. User context is missing." });
@@ -59,7 +64,8 @@ export const createStore = async (req, res) => {
       planStartDate,
       planExpiryDate,
       isTrialActive: true,
-      trialPlanDays
+      trialPlanDays,
+      theme: 'default-theme'
     });
 
     res.status(201).json({ message: "Store created successfully!", store });

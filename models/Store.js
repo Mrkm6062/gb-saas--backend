@@ -20,7 +20,7 @@ const storeSchema = new mongoose.Schema({
   logo: { type: String },
   favicon: { type: String },
   banner: { type: String },
-  theme: { type: String, default: "default" },
+  theme: { type: String, default: "default-theme" },
   paidThemes: [{
     themeId: { type: String, required: true },
     purchaseDate: { type: Date, default: Date.now },
