@@ -2,7 +2,8 @@ import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import Store from '../models/Store.js';
 import Theme from '../models/Theme.js';
-import PlatformSettings from '../models/PlatformSettings.js'; // Assuming this model exists for Razorpay keys
+import PlatformPaymentSettings from '../models/PlatformPaymentSettings.js';
+import { decrypt } from "../utils/crypto.js";
 
 // CREATE ORDER FOR THEME PURCHASE
 export const createThemePurchaseOrder = async (req, res) => {
@@ -24,14 +25,19 @@ export const createThemePurchaseOrder = async (req, res) => {
             return res.status(400).json({ message: "You have already purchased this theme." });
         }
 
-        const settings = await PlatformSettings.findOne();
+        const settings = await PlatformPaymentSettings.findOne();
         if (!settings || !settings.razorpayEnabled || !settings.razorpayKeyId || !settings.razorpayKeySecret) {
             return res.status(500).json({ message: "Platform payment gateway is not configured." });
         }
 
+        const keySecret = decrypt(settings.razorpayKeySecret);
+        if (!keySecret) {
+            return res.status(500).json({ message: "Razorpay secret key is missing or corrupted." });
+        }
+
         const instance = new Razorpay({
             key_id: settings.razorpayKeyId,
-            key_secret: settings.razorpayKeySecret,
+            key_secret: keySecret,
         });
 
         const options = {
@@ -61,14 +67,19 @@ export const verifyThemePurchase = async (req, res) => {
     try {
         const { razorpay_payment_id, razorpay_order_id, razorpay_signature, storeId, themeId } = req.body;
 
-        const settings = await PlatformSettings.findOne();
+        const settings = await PlatformPaymentSettings.findOne();
         if (!settings || !settings.razorpayKeySecret) {
             return res.status(500).json({ message: "Platform payment gateway is not configured." });
         }
 
+        const keySecret = decrypt(settings.razorpayKeySecret);
+        if (!keySecret) {
+            return res.status(500).json({ message: "Razorpay secret key is missing or corrupted." });
+        }
+
         const body = razorpay_order_id + "|" + razorpay_payment_id;
         const expectedSignature = crypto
-            .createHmac('sha256', settings.razorpayKeySecret)
+            .createHmac('sha256', keySecret)
             .update(body.toString())
             .digest('hex');
 
@@ -102,7 +113,7 @@ export const verifyThemePurchase = async (req, res) => {
 // GET RAZORPAY PUBLIC KEY
 export const getPublicKey = async (req, res) => {
     try {
-        const settings = await PlatformSettings.findOne();
+        const settings = await PlatformPaymentSettings.findOne();
         if (!settings || !settings.razorpayEnabled || !settings.razorpayKeyId) {
             return res.status(404).json({ razorpayEnabled: false, message: "Razorpay is not enabled on this platform." });
         }
