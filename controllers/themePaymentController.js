@@ -40,10 +40,12 @@ export const createThemePurchaseOrder = async (req, res) => {
             key_secret: keySecret,
         });
 
+        const rawReceipt = `receipt_theme_${theme.themeId}_${store._id}_${Date.now()}`;
+
         const options = {
             amount: theme.price * 100, // amount in the smallest currency unit
             currency: "INR",
-            receipt: `receipt_theme_${theme.themeId}_${store._id}_${Date.now()}`,
+            receipt: rawReceipt.substring(0, 40),
             notes: {
                 purchaseType: 'theme',
                 themeId: theme._id.toString(),
