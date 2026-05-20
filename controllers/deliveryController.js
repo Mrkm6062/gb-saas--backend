@@ -53,7 +53,9 @@ export const getDeliverySettings = async (req, res) => {
       return res.status(400).json({ message: "Store ID is required" });
     }
 
-    const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId });
+    const storeQuery = { _id: storeId };
+    if (req.user.role !== 'superadmin') storeQuery.ownerId = req.user.userId;
+    const store = await Store.findOne(storeQuery);
     if (!store) {
       return res.status(403).json({ message: "Not authorized to access delivery settings for this store." });
     }
@@ -77,7 +79,9 @@ export const updateDeliverySettings = async (req, res) => {
       return res.status(400).json({ message: "Store ID is required" });
     }
 
-    const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId });
+    const storeQuery = { _id: storeId };
+    if (req.user.role !== 'superadmin') storeQuery.ownerId = req.user.userId;
+    const store = await Store.findOne(storeQuery);
     if (!store) {
       return res.status(403).json({ message: "Not authorized to update delivery settings for this store." });
     }

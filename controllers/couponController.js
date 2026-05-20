@@ -11,7 +11,9 @@ export const createCoupon = async (req, res) => {
     const { storeId, code, description, discountType, discountValue, minOrderAmount, maxDiscountAmount, startDate, endDate, usageLimit, isActive } = req.body;
 
     // Ensure store exists and is owned by the requester
-    const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId });
+    const storeQuery = { _id: storeId };
+    if (req.user.role !== 'superadmin') storeQuery.ownerId = req.user.userId;
+    const store = await Store.findOne(storeQuery);
     if (!store) return res.status(403).json({ message: "Not authorized to create coupons for this store" });
 
     // Check for duplicate codes within this specific store
@@ -43,7 +45,9 @@ export const getCoupons = async (req, res) => {
   try {
     const { storeId } = req.query;
 
-    const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId });
+    const storeQuery = { _id: storeId };
+    if (req.user.role !== 'superadmin') storeQuery.ownerId = req.user.userId;
+    const store = await Store.findOne(storeQuery);
     if (!store) return res.status(403).json({ message: "Not authorized" });
 
     const coupons = await Coupon.find({ storeId }).sort({ createdAt: -1 });
@@ -62,7 +66,9 @@ export const updateCoupon = async (req, res) => {
     const coupon = await Coupon.findById(id);
     if (!coupon) return res.status(404).json({ message: "Coupon not found" });
 
-    const store = await Store.findOne({ _id: coupon.storeId, ownerId: req.user.userId });
+    const storeQuery = { _id: coupon.storeId };
+    if (req.user.role !== 'superadmin') storeQuery.ownerId = req.user.userId;
+    const store = await Store.findOne(storeQuery);
     if (!store) return res.status(403).json({ message: "Not authorized" });
 
     // If they are trying to change the code, make sure it doesn't conflict with another coupon
@@ -87,7 +93,9 @@ export const deleteCoupon = async (req, res) => {
     const coupon = await Coupon.findById(id);
     if (!coupon) return res.status(404).json({ message: "Coupon not found" });
 
-    const store = await Store.findOne({ _id: coupon.storeId, ownerId: req.user.userId });
+    const storeQuery = { _id: coupon.storeId };
+    if (req.user.role !== 'superadmin') storeQuery.ownerId = req.user.userId;
+    const store = await Store.findOne(storeQuery);
     if (!store) return res.status(403).json({ message: "Not authorized" });
 
     await coupon.deleteOne();

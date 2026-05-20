@@ -14,7 +14,9 @@ export const createProduct = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized: User context is missing." });
     }
 
-    const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId }).populate('planId');
+    const storeQuery = { _id: storeId };
+    if (req.user.role !== 'superadmin') storeQuery.ownerId = req.user.userId;
+    const store = await Store.findOne(storeQuery).populate('planId');
     if (!store) {
       return res.status(403).json({ message: "Not authorized to add products to this store" });
     }
@@ -82,7 +84,9 @@ export const getProducts = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized: User context is missing." });
     }
 
-    const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId });
+    const storeQuery = { _id: storeId };
+    if (req.user.role !== 'superadmin') storeQuery.ownerId = req.user.userId;
+    const store = await Store.findOne(storeQuery);
     if (!store) {
       return res.status(403).json({ message: "Not authorized to view these products" });
     }
@@ -108,7 +112,9 @@ export const updateProduct = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    const store = await Store.findOne({ _id: product.storeId, ownerId: req.user.userId });
+    const storeQuery = { _id: product.storeId };
+    if (req.user.role !== 'superadmin') storeQuery.ownerId = req.user.userId;
+    const store = await Store.findOne(storeQuery);
     if (!store) {
       return res.status(403).json({ message: "Not authorized to update this product" });
     }
@@ -172,7 +178,9 @@ export const deleteProduct = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    const store = await Store.findOne({ _id: product.storeId, ownerId: req.user.userId });
+    const storeQuery = { _id: product.storeId };
+    if (req.user.role !== 'superadmin') storeQuery.ownerId = req.user.userId;
+    const store = await Store.findOne(storeQuery);
     if (!store) {
       return res.status(403).json({ message: "Not authorized to delete this product" });
     }

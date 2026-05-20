@@ -40,7 +40,9 @@ export const addDomain = async (req, res) => {
     }
 
     // Verify ownership of the store
-    const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId }).populate('planId');
+    const storeQuery = { _id: storeId };
+    if (req.user.role !== 'superadmin') storeQuery.ownerId = req.user.userId;
+    const store = await Store.findOne(storeQuery).populate('planId');
     if (!store) {
       return res.status(403).json({ message: "Not authorized to manage domains for this store." });
     }
@@ -84,7 +86,9 @@ export const addDomain = async (req, res) => {
 // 5. GET DOMAIN STATUS
 export const getDomainStatus = async (req, res) => {
   try {
-    const domainRecord = await Domain.findOne({ _id: req.params.id, userId: req.user._id });
+    const query = { _id: req.params.id };
+    if (req.user.role !== 'superadmin') query.userId = req.user._id;
+    const domainRecord = await Domain.findOne(query);
     if (!domainRecord) {
       return res.status(404).json({ message: "Domain not found." });
     }
@@ -102,7 +106,9 @@ export const getDomainStatus = async (req, res) => {
 // 6. TRIGGER SSL CHECK
 export const checkDomainSSL = async (req, res) => {
   try {
-    const domainRecord = await Domain.findOne({ _id: req.params.id, userId: req.user._id });
+    const query = { _id: req.params.id };
+    if (req.user.role !== 'superadmin') query.userId = req.user._id;
+    const domainRecord = await Domain.findOne(query);
     if (!domainRecord) {
       return res.status(404).json({ message: "Domain not found." });
     }
@@ -132,7 +138,7 @@ export const verifyDomain = async (req, res) => {
       return res.status(404).json({ message: "Domain not found." });
     }
 
-    if (domainRecord.userId.toString() !== req.user._id.toString()) {
+    if (req.user.role !== 'superadmin' && domainRecord.userId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Unauthorized to verify this domain." });
     }
 
@@ -179,7 +185,9 @@ export const verifyDomain = async (req, res) => {
 // 3. GET ALL DOMAINS FOR USER
 export const getDomains = async (req, res) => {
   try {
-    const domains = await Domain.find({ userId: req.user._id }).populate("storeId", "storeName storeSlug");
+    const query = {};
+    if (req.user.role !== 'superadmin') query.userId = req.user._id;
+    const domains = await Domain.find(query).populate("storeId", "storeName storeSlug");
     res.json(domains);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -189,7 +197,9 @@ export const getDomains = async (req, res) => {
 // 4. DELETE DOMAIN
 export const deleteDomain = async (req, res) => {
   try {
-    const domainRecord = await Domain.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
+    const query = { _id: req.params.id };
+    if (req.user.role !== 'superadmin') query.userId = req.user._id;
+    const domainRecord = await Domain.findOneAndDelete(query);
     if (!domainRecord) return res.status(404).json({ message: "Domain not found or unauthorized." });
     res.json({ message: "Domain removed successfully." });
   } catch (error) {
