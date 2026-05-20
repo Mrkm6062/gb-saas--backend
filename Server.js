@@ -133,10 +133,10 @@ app.use("/api/auth", authRoutes); // Users can login/register
 app.use("/api/store", storeRoutes); // Users can create/manage their stores
 app.use("/api/products", productRoutes); // Admin product management
 app.use("/api/default-products", defaultProductRoutes); // Default products catalog
-app.use("/api/superadmin", superadminRoutes); // Superadmin access
 app.use("/api/superadmin/themes", superadminThemeRoutes); // Superadmin Theme Management
-app.use("/api/themes", themeRoutes); // Store owner active theme fetching
 app.use("/api/superadmin/default-products", superadminDefaultProductRoutes); // Superadmin Default Products
+app.use("/api/superadmin", superadminRoutes); // Superadmin access
+app.use("/api/themes", themeRoutes); // Store owner active theme fetching
 app.use("/api/plans", planRoutes); // Public plan fetching
 app.use("/api/orders", orderRoutes); // Orders (handles both storefront & admin)
 app.use("/api/policies", policyRoutes); // Store policies (handles both storefront & admin)
