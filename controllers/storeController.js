@@ -97,7 +97,15 @@ export const updateStore = async (req, res) => {
     if (banner !== undefined) store.banner = banner;
     if (category !== undefined) store.category = category;
     if (storeType !== undefined) store.storeType = storeType;
-    if (theme !== undefined) store.theme = theme;
+    if (theme !== undefined) {
+      const themeDoc = await Theme.findOne({ themeId: theme });
+      // Check if it's a paid theme and if the user has purchased it.
+      if (themeDoc && themeDoc.type === 'paid') {
+        const hasPurchased = store.paidThemes?.some(pt => pt.themeId === theme);
+        if (!hasPurchased) return res.status(403).json({ message: "You have not purchased this theme. Please purchase it to apply." });
+      }
+      store.theme = theme;
+    }
 
     await store.save();
 

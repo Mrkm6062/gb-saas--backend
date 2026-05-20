@@ -21,6 +21,11 @@ const storeSchema = new mongoose.Schema({
   favicon: { type: String },
   banner: { type: String },
   theme: { type: String, default: "default" },
+  paidThemes: [{
+    themeId: { type: String, required: true },
+    purchaseDate: { type: Date, default: Date.now },
+    transactionId: { type: String, required: true }
+}],
   isDeleted: { type: Boolean, default: false },
   deletedAt: { type: Date }
 }, {

@@ -40,6 +40,7 @@ import { startSubscriptionReminderCron } from "./middleware/subscriptionReminder
 import { startCleanupDeletedStoresCron } from "./middleware/cleanupDeletedStores.js";
 import defaultProductRoutes from "./routes/defaultProductRoutes.js";
 import superadminDefaultProductRoutes from "./routes/superadminDefaultProductRoutes.js";
+import themePaymentRoutes from "./routes/themePaymentRoutes.js";
 import themeRoutes from "./routes/themeRoutes.js";
 import superadminThemeRoutes from "./routes/superadminThemeRoutes.js";
 
@@ -156,6 +157,7 @@ app.get("/api/public-order/:id", getPublicOrder); // Public order tracking
 app.post("/api/customers/auth/send-otp", sendCustomerOtp); // Customer OTP auth
 app.post("/api/customers/auth/verify-otp", verifyCustomerOtp); // Customer OTP verify
 app.get("/api/customers/auth/orders", getCustomerOrders); // Get Customer orders
+app.use("/api/theme-payments", themePaymentRoutes); // Paid theme purchases
 app.use("/api/platform-payments", platformPaymentRoutes); // Superadmin SaaS Payments
 
 
