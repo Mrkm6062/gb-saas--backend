@@ -19,7 +19,7 @@ const storeSchema = new mongoose.Schema({
   websiteTitle: { type: String },
   logo: { type: String },
   favicon: { type: String },
-  banner: { type: String },
+  banner: { type: [String], default: [] },
   theme: { type: String, default: "default-theme" },
   paidThemes: [{
     themeId: { type: String, required: true },
