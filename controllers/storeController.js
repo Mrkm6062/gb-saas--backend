@@ -78,7 +78,7 @@ export const createStore = async (req, res) => {
 export const updateStore = async (req, res) => {
   try {
     const { id } = req.params; // Can be MongoDB _id or custom storeId (e.g., GBS001)
-    const { storeName, websiteTitle, logo, favicon, banner, category, storeType, theme } = req.body;
+    const { storeName, websiteTitle, logo, favicon, banner, category, storeType, theme, supportPhoneNumbers, supportEmail, locationAddress, mapLocation } = req.body;
 
     // Ensure the store belongs to the authenticated user
     const query = { ownerId: req.user.userId };
@@ -112,6 +112,10 @@ export const updateStore = async (req, res) => {
       }
       store.theme = theme;
     }
+    if (supportPhoneNumbers !== undefined) store.supportPhoneNumbers = supportPhoneNumbers;
+    if (supportEmail !== undefined) store.supportEmail = supportEmail;
+    if (locationAddress !== undefined) store.locationAddress = locationAddress;
+    if (mapLocation !== undefined) store.mapLocation = mapLocation;
 
     await store.save();
 

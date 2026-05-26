@@ -26,6 +26,10 @@ const storeSchema = new mongoose.Schema({
     purchaseDate: { type: Date, default: Date.now },
     transactionId: { type: String, required: true }
 }],
+  supportPhoneNumbers: { type: [String], default: [] },
+  supportEmail: { type: String, default: "" },
+  locationAddress: { type: String, default: "" },
+  mapLocation: { type: String, default: "" },
   isDeleted: { type: Boolean, default: false },
   deletedAt: { type: Date }
 }, {
