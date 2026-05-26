@@ -88,7 +88,8 @@ export const getPublicThemeCustomization = async (req, res) => {
     }
 
     const storeId = req.store._id;
-    const themeId = req.store.theme; // Fetch customization for the currently active theme
+    // Prioritize query parameter for live previews, otherwise fallback to the active store theme
+    const themeId = req.query.themeId || req.store.theme; 
 
     const customization = await ThemeCustomization.findOne({ storeId, themeId });
     
