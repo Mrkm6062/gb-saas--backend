@@ -1,5 +1,6 @@
 import Product from "../models/Product.js";
 import Store from "../models/Store.js";
+import Review from "../models/Review.js";
 
 // CREATE PRODUCT
 export const createProduct = async (req, res) => {
@@ -91,9 +92,23 @@ export const getProducts = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to view these products" });
     }
 
-    const products = await Product.find({ storeId });
+    // Fetch products as plain JavaScript objects (.lean()) so we can mutate them easily
+    const products = await Product.find({ storeId }).lean();
 
-    res.json(products);
+    // Aggregate approved reviews to calculate average ratings and totals
+    const reviewsAggr = await Review.aggregate([
+      { $match: { storeId: store._id, isApproved: true } },
+      { $group: { _id: "$productId", averageRating: { $avg: "$rating" }, totalReviews: { $sum: 1 } } }
+    ]);
+
+    // Create a fast lookup map mapping productId to its review stats
+    const reviewMap = {};
+    reviewsAggr.forEach(r => { reviewMap[r._id.toString()] = r; });
+
+    // Attach review stats to each product
+    const productsWithReviews = products.map(p => ({ ...p, averageRating: reviewMap[p._id.toString()]?.averageRating || 0, totalReviews: reviewMap[p._id.toString()]?.totalReviews || 0 }));
+
+    res.json(productsWithReviews);
   } catch (error) {
     console.error("Error fetching products:", error);
     res.status(500).json({ message: error.message });

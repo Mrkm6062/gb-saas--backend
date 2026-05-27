@@ -4,6 +4,7 @@ import { protect } from "../middleware/authMiddleware.js";
 import { subdomainMiddleware } from "../middleware/subdomain.js";
 import { storeResolver } from "../middleware/storeResolver.js";
 import Product from "../models/Product.js";
+import Review from "../models/Review.js";
 
 const router = express.Router();
 
@@ -23,10 +24,29 @@ router.get("/tenant/info", subdomainMiddleware, storeResolver, (req, res) => {
 });
 
 router.get("/tenant/products", subdomainMiddleware, storeResolver, async (req, res) => {
-  if (!req.store) return res.status(404).json({ message: "Store not found" });
-  // Only return active products for the public storefront
-  const products = await Product.find({ storeId: req.store._id, isActive: true });
-  res.json(products);
+  try {
+    if (!req.store) return res.status(404).json({ message: "Store not found" });
+    
+    // Only return active products for the public storefront, using .lean() for fast performance
+    const products = await Product.find({ storeId: req.store._id, isActive: true }).lean();
+    
+    // Aggregate approved reviews to calculate average ratings and totals
+    const reviewsAggr = await Review.aggregate([
+      { $match: { storeId: req.store._id, isApproved: true } },
+      { $group: { _id: "$productId", averageRating: { $avg: "$rating" }, totalReviews: { $sum: 1 } } }
+    ]);
+
+    // Create a fast lookup map
+    const reviewMap = {};
+    reviewsAggr.forEach(r => { reviewMap[r._id.toString()] = r; });
+
+    // Attach review stats to each product
+    const productsWithReviews = products.map(p => ({ ...p, averageRating: reviewMap[p._id.toString()]?.averageRating || 0, totalReviews: reviewMap[p._id.toString()]?.totalReviews || 0 }));
+
+    res.json(productsWithReviews);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 });
 
 // --- DYNAMIC ID-BASED ROUTES (must be after specific string routes) ---

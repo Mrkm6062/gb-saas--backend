@@ -44,6 +44,7 @@ import themePaymentRoutes from "./routes/themePaymentRoutes.js";
 import themeRoutes from "./routes/themeRoutes.js";
 import superadminThemeRoutes from "./routes/superadminThemeRoutes.js";
 import themeCustomizationRoutes from "./routes/themeCustomizationRoutes.js";
+import reviewRoutes from "./routes/reviewRoutes.js";
 
 
 dotenv.config();
@@ -140,6 +141,7 @@ app.use("/api/superadmin/default-products", superadminDefaultProductRoutes); // 
 app.use("/api/superadmin", superadminRoutes); // Superadmin access
 app.use("/api/themes", themeRoutes); // Store owner active theme fetching
 app.use("/api/theme-customization", themeCustomizationRoutes); // Theme customization
+app.use("/api/reviews", reviewRoutes); // Product Reviews
 app.use("/api/plans", planRoutes); // Public plan fetching
 app.use("/api/orders", orderRoutes); // Orders (handles both storefront & admin)
 app.use("/api/policies", policyRoutes); // Store policies (handles both storefront & admin)
