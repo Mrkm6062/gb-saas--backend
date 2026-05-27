@@ -37,7 +37,7 @@ export const getThemeCustomization = async (req, res) => {
 // 2. UPDATE OR CREATE (UPSERT) CUSTOMIZATION
 export const updateThemeCustomization = async (req, res) => {
   try {
-    const { storeId, themeId, global, header, banner, category, productCard, footer } = req.body;
+    const { storeId, themeId, global, header, banner, category, productCard, footer, whyChooseUs } = req.body;
 
     if (!storeId || !themeId) {
       return res.status(400).json({ message: "storeId and themeId are required in the body." });
@@ -62,6 +62,7 @@ export const updateThemeCustomization = async (req, res) => {
     if (category) updateData.category = category;
     if (productCard) updateData.productCard = productCard;
     if (footer) updateData.footer = footer;
+    if (whyChooseUs) updateData.whyChooseUs = whyChooseUs;
 
     // Use findOneAndUpdate with upsert: true to create it if it doesn't exist
     const updatedCustomization = await ThemeCustomization.findOneAndUpdate(

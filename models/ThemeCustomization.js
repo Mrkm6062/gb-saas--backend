@@ -50,6 +50,24 @@ const themeCustomizationSchema = new mongoose.Schema(
       bgColor: { type: String, default: "#111827" },
       textColor: { type: String, default: "#ffffff" },
     },
+    whyChooseUs: {
+      enabled: { type: Boolean, default: true},
+
+      title: { type: String, default: "Why Choose Us" },
+
+      subtitle: { type: String, default: ""},
+
+      items: [
+       {
+          title: { type: String, required: true },
+          description: { type: String, default: "" },
+          icon: { type: String, default: "" },
+          image: { type: String,default: "" },
+          isActive: { type: Boolean, default: true },
+          sortOrder: { type: Number, default: 0 }
+        }
+  ]
+}
   },
   { timestamps: true }
 );
