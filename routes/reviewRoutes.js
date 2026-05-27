@@ -3,6 +3,7 @@ import { protect } from "../middleware/authMiddleware.js";
 import {
   createReview,
   getProductReviews,
+  checkReviewStatus,
   getStoreReviews,
   updateReviewStatus,
   deleteReview
@@ -13,6 +14,7 @@ const router = express.Router();
 // PUBLIC ROUTES (Storefront - relies on global storeResolver)
 router.post("/public", createReview);
 router.get("/public/:productId", getProductReviews);
+router.get("/public/check/:orderId/:productId", checkReviewStatus);
 
 // ADMIN ROUTES (Dashboard)
 router.get("/", protect, getStoreReviews);

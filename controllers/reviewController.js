@@ -13,6 +13,12 @@ export const createReview = async (req, res) => {
     if (!req.store) return res.status(400).json({ message: "Store context missing" });
     const storeId = req.store._id;
 
+    // Check for existing review
+    if (orderId && productId) {
+      const existing = await Review.findOne({ orderId, productId });
+      if (existing) return res.status(400).json({ message: "You have already reviewed this product." });
+    }
+
     const newReview = await Review.create({
       storeId,
       productId,
@@ -43,6 +49,17 @@ export const getProductReviews = async (req, res) => {
     }).sort({ createdAt: -1 });
 
     res.json(reviews);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// CHECK IF A REVIEW EXISTS (PUBLIC)
+export const checkReviewStatus = async (req, res) => {
+  try {
+    const { orderId, productId } = req.params;
+    const review = await Review.findOne({ orderId, productId });
+    res.json({ hasReviewed: !!review });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

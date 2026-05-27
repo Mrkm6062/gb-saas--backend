@@ -29,6 +29,11 @@ const sendOrderConfirmationEmail = async (order, store) => {
 
     const itemsHtml = order.orderItems.map(item => `<tr><td style="padding:8px; border-bottom:1px solid #ddd;">${item.qty}x ${item.name}</td><td style="padding:8px; border-bottom:1px solid #ddd; text-align:right;">₹${item.price * item.qty}</td></tr>`).join('');
     
+    const storeUrl = `https://${store.subdomain}`;
+    const reviewLinksHtml = order.orderItems.map(item => 
+      `<div style="margin-bottom: 10px;"><a href="${storeUrl}/review/${order._id}/${item.product?._id || item.product}" style="display: inline-block; background-color: #76b900; color: #ffffff; padding: 8px 16px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Review ${item.name}</a></div>`
+    ).join('');
+    
     const template = config.templates?.find(t => t.eventType === 'order_placed' && t.isActive);
 
     if (template) {
@@ -44,7 +49,8 @@ const sendOrderConfirmationEmail = async (order, store) => {
         .replace(/{{orderItems}}/g, `<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">${itemsHtml}</table>`)
         .replace(/{{totalAmount}}/g, order.totalAmount)
         .replace(/{{discountAmount}}/g, order.discountAmount || 0)
-        .replace(/{{shippingCharge}}/g, order.shippingCharge || 0);
+        .replace(/{{shippingCharge}}/g, order.shippingCharge || 0)
+        .replace(/{{reviewLinks}}/g, reviewLinksHtml);
     } else {
       html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
@@ -87,6 +93,11 @@ const sendStatusUpdateEmail = async (order, store, status) => {
 
     const itemsHtml = order.orderItems.map(item => `<tr><td style="padding:8px; border-bottom:1px solid #ddd;">${item.qty}x ${item.name}</td><td style="padding:8px; border-bottom:1px solid #ddd; text-align:right;">₹${item.price * item.qty}</td></tr>`).join('');
     
+    const storeUrl = `https://${store.subdomain}`;
+    const reviewLinksHtml = order.orderItems.map(item => 
+      `<div style="margin-bottom: 10px;"><a href="${storeUrl}/review/${order._id}/${item.product?._id || item.product}" style="display: inline-block; background-color: #76b900; color: #ffffff; padding: 8px 16px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Review ${item.name}</a></div>`
+    ).join('');
+    
     const subject = template.subject.replace(/{{storeName}}/g, store.storeName).replace(/{{customerName}}/g, order.customerName).replace(/{{orderId}}/g, order._id.toString().slice(-6).toUpperCase());
     const html = template.body
       .replace(/{{storeName}}/g, store.storeName)
@@ -95,7 +106,8 @@ const sendStatusUpdateEmail = async (order, store, status) => {
       .replace(/{{orderItems}}/g, `<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">${itemsHtml}</table>`)
       .replace(/{{totalAmount}}/g, order.totalAmount)
       .replace(/{{discountAmount}}/g, order.discountAmount || 0)
-      .replace(/{{shippingCharge}}/g, order.shippingCharge || 0);
+      .replace(/{{shippingCharge}}/g, order.shippingCharge || 0)
+      .replace(/{{reviewLinks}}/g, reviewLinksHtml);
 
     await transporter.sendMail({ from: `"${store.storeName}" <${config.emailAddress}>`, to: order.customerEmail, subject, html });
   } catch (err) {
