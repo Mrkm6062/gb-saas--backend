@@ -49,18 +49,19 @@ export const uploadImages = async (req, res) => {
 
     // Validate that all uploaded files are strictly images (both MIME and actual content)
     for (const file of req.files) {
-      if (!file.mimetype.startsWith('image/')) {
-        return res.status(400).json({ message: `Invalid file type: ${file.originalname}. Only image files are allowed.` });
+      if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('video/')) {
+        return res.status(400).json({ message: `Invalid file type: ${file.originalname}. Only image and video files are allowed.` });
       }
 
       const isIco = file.originalname.toLowerCase().endsWith('.ico') || file.mimetype === 'image/x-icon' || file.mimetype === 'image/vnd.microsoft.icon';
+      const isVideo = file.mimetype.startsWith('video/');
       
       if (isIco) {
         // Validate ICO magic numbers: First 4 bytes must be 00 00 01 00
         if (file.buffer.length < 4 || file.buffer[0] !== 0 || file.buffer[1] !== 0 || file.buffer[2] !== 1 || file.buffer[3] !== 0) {
           return res.status(400).json({ message: `File ${file.originalname} is a fake or corrupted ICO file.` });
         }
-      } else {
+      } else if (!isVideo && !file.mimetype.startsWith('image/svg')) {
         // Deep content check using sharp to ensure it's a real image (catches renamed PDFs/Videos)
         try {
           await sharp(file.buffer).metadata();
@@ -78,10 +79,15 @@ export const uploadImages = async (req, res) => {
       let extension;
 
       const originalName = file.originalname.toLowerCase();
+      const isVideo = file.mimetype.startsWith('video/');
 
-      // Check if file is .ico or .webp
-      if (originalName.endsWith('.ico') || file.mimetype === 'image/x-icon' || file.mimetype === 'image/vnd.microsoft.icon') {
-        // Skip sharp conversion for .ico as sharp doesn't support it natively
+      if (isVideo) {
+        // Skip sharp conversion for videos entirely
+        fileBuffer = file.buffer;
+        contentType = file.mimetype;
+        extension = originalName.split('.').pop() || 'mp4';
+      } else if (originalName.endsWith('.ico') || file.mimetype === 'image/x-icon' || file.mimetype === 'image/vnd.microsoft.icon') {
+        // Skip sharp conversion for .ico
         fileBuffer = file.buffer;
         contentType = 'image/x-icon';
         extension = 'ico';
@@ -119,7 +125,7 @@ export const uploadImages = async (req, res) => {
 
       // Ensure the extension matches the new format
       const safeBaseName = file.originalname.replace(/\.[^/.]+$/, "").replace(/\s+/g, '-');
-      const gcsFilePath = `${storeFolder}/products/${safeBaseName}.${extension}`;
+      const gcsFilePath = `${storeFolder}/media/${safeBaseName}-${Date.now()}.${extension}`;
       const blob = bucket.file(gcsFilePath);
 
       await blob.save(fileBuffer, {

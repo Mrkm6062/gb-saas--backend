@@ -7,6 +7,7 @@ import { protect } from "../middleware/authMiddleware.js";
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() }); // Process files in memory for fast conversion
 
+router.post("/public", upload.array("images", 10), uploadImages); // Public upload for customer reviews
 router.post("/", protect, upload.array("images", 10), uploadImages);
 router.get("/", protect, listImages);
 router.delete("/", protect, deleteImage);
