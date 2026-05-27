@@ -11,6 +11,7 @@ import CheckoutSettings from "../models/CheckoutSettings.js";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import { decrypt } from "../utils/crypto.js";
+import Domain from "../models/Domain.js";
 
 // Internal Helper function to send order confirmation email asynchronously
 const sendOrderConfirmationEmail = async (order, store) => {
@@ -29,7 +30,9 @@ const sendOrderConfirmationEmail = async (order, store) => {
 
     const itemsHtml = order.orderItems.map(item => `<tr><td style="padding:8px; border-bottom:1px solid #ddd;">${item.qty}x ${item.name}</td><td style="padding:8px; border-bottom:1px solid #ddd; text-align:right;">₹${item.price * item.qty}</td></tr>`).join('');
     
-    const storeUrl = `https://${store.subdomain}`;
+    const domainRecord = await Domain.findOne({ storeId: store._id, status: 'connected' });
+    const storeUrl = domainRecord ? `https://${domainRecord.domain}` : `https://${store.subdomain}`;
+    
     const reviewLinksHtml = order.orderItems.map(item => 
       `<div style="margin-bottom: 10px;"><a href="${storeUrl}/review/${order._id}/${item.product?._id || item.product}" style="display: inline-block; background-color: #76b900; color: #ffffff; padding: 8px 16px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Review ${item.name}</a></div>`
     ).join('');
@@ -93,7 +96,9 @@ const sendStatusUpdateEmail = async (order, store, status) => {
 
     const itemsHtml = order.orderItems.map(item => `<tr><td style="padding:8px; border-bottom:1px solid #ddd;">${item.qty}x ${item.name}</td><td style="padding:8px; border-bottom:1px solid #ddd; text-align:right;">₹${item.price * item.qty}</td></tr>`).join('');
     
-    const storeUrl = `https://${store.subdomain}`;
+    const domainRecord = await Domain.findOne({ storeId: store._id, status: 'connected' });
+    const storeUrl = domainRecord ? `https://${domainRecord.domain}` : `https://${store.subdomain}`;
+    
     const reviewLinksHtml = order.orderItems.map(item => 
       `<div style="margin-bottom: 10px;"><a href="${storeUrl}/review/${order._id}/${item.product?._id || item.product}" style="display: inline-block; background-color: #76b900; color: #ffffff; padding: 8px 16px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Review ${item.name}</a></div>`
     ).join('');
