@@ -106,21 +106,6 @@ const sendStatusUpdateEmail = async (order, store, status) => {
     let trackingDetailsHtml = '';
     if (order.ShippingMethod || order.ShippingTrackingNumber || order.DeliveryPersonName) {
       trackingDetailsHtml = `<div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-top: 20px;">
-        <h4 style="margin-top: 0; color: #76b900;">Tracking Information</h4>`;
-      if (order.ShippingMethod) trackingDetailsHtml += `<p style="margin: 5px 0; font-size: 14px;"><strong>Shipping Method:</strong> ${order.ShippingMethod}</p>`;
-      if (order.ShippingCompany) trackingDetailsHtml += `<p style="margin: 5px 0; font-size: 14px;"><strong>Shipping Company:</strong> ${order.ShippingCompany}</p>`;
-      if (order.ShippingTrackingNumber) trackingDetailsHtml += `<p style="margin: 5px 0; font-size: 14px;"><strong>Tracking Number:</strong> ${order.ShippingTrackingNumber}</p>`;
-      if (order.DeliveryPersonName || order.DeliveryPersonPhone) {
-        const name = order.DeliveryPersonName || 'N/A';
-        const phone = order.DeliveryPersonPhone ? ` (${order.DeliveryPersonPhone})` : '';
-        trackingDetailsHtml += `<p style="margin: 5px 0; font-size: 14px;"><strong>Delivery Person:</strong> ${name}${phone}</p>`;
-      }
-      trackingDetailsHtml += `</div>`;
-    }
-    
-    let trackingDetailsHtml = '';
-    if (order.ShippingMethod || order.ShippingTrackingNumber || order.DeliveryPersonName) {
-      trackingDetailsHtml = `<div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-top: 20px;">
         <h4 style="margin-top: 0; color: #3b82f6;">Tracking Information</h4>`;
       if (order.ShippingMethod) trackingDetailsHtml += `<p style="margin: 5px 0; font-size: 14px;"><strong>Shipping Method:</strong> ${order.ShippingMethod}</p>`;
       if (order.ShippingCompany) trackingDetailsHtml += `<p style="margin: 5px 0; font-size: 14px;"><strong>Shipping Company:</strong> ${order.ShippingCompany}</p>`;
@@ -143,7 +128,6 @@ const sendStatusUpdateEmail = async (order, store, status) => {
       .replace(/{{discountAmount}}/g, order.discountAmount || 0)
       .replace(/{{shippingCharge}}/g, order.shippingCharge || 0)
       .replace(/{{reviewLinks}}/g, reviewLinksHtml)
-        .replace(/{{trackingDetails}}/g, trackingDetailsHtml)
       .replace(/{{trackingDetails}}/g, trackingDetailsHtml)
       .replace(/{{ShippingMethod}}/g, order.ShippingMethod || 'N/A')
       .replace(/{{ShippingTrackingNumber}}/g, order.ShippingTrackingNumber || 'N/A')
