@@ -51,7 +51,7 @@ export const registerUser = async (req, res) => {
 // LOGIN SUPERADMIN / STAFF
 export const loginSuperAdmin = async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const { email, otp, password, loginType } = req.body;
 
     if (!email) {
       return res.status(400).json({ message: "Please provide an email address" });
@@ -59,20 +59,35 @@ export const loginSuperAdmin = async (req, res) => {
 
     const normalizedEmail = email.toLowerCase();
 
-    // 1. Find user in SuperAdminStaff or User (for the master superadmin)
-    let user = await User.findOne({ email: normalizedEmail, role: 'superadmin' });
-    let isStaff = false;
-
-    if (!user) {
-      user = await SuperAdminStaff.findOne({ email: normalizedEmail });
-      isStaff = !!user;
+    // 1. SYSADMIN PASSWORD LOGIN
+    if (loginType === 'sysadmin') {
+      const user = await User.findOne({ email: normalizedEmail, role: 'superadmin' });
+      if (!user) {
+        return res.status(401).json({ message: "Not authorized as Superadmin." });
+      }
+      
+      if (await user.matchPassword(password)) {
+        return res.json({
+          _id: user._id,
+          userId: user.userId,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          token: generateToken(user._id),
+        });
+      } else {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
     }
 
+    // 2. EMPLOYEE OTP LOGIN
+    let user = await SuperAdminStaff.findOne({ email: normalizedEmail });
+    
     if (!user) {
-      return res.status(401).json({ message: "Not authorized. Email not found in admin records." });
+      return res.status(401).json({ message: "Not authorized. Employee email not found." });
     }
 
-    if (isStaff && user.Suspended) {
+    if (user.Suspended) {
       return res.status(403).json({ message: "Your account is suspended. Please contact the administrator." });
     }
 
