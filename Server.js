@@ -65,13 +65,8 @@ app.set('trust proxy', 1);
 // Middleware
 app.use(express.json());
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow all origins dynamically (crucial for a multi-tenant SaaS with custom domains)
-    callback(null, true);
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-store-id', 'x-store-code', 'x-store-domain', 'Origin', 'Accept']
+  origin: true, // Automatically reflects the requesting origin and allows all headers
+  credentials: true
 }));
 
 // Security Headers Middleware
