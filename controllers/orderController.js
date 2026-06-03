@@ -103,6 +103,36 @@ const sendStatusUpdateEmail = async (order, store, status) => {
       `<div style="margin-bottom: 10px;"><a href="${storeUrl}/review/${order._id}/${item.product?._id || item.product}" style="display: inline-block; background-color: #76b900; color: #ffffff; padding: 8px 16px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Review ${item.name}</a></div>`
     ).join('');
     
+    let trackingDetailsHtml = '';
+    if (order.ShippingMethod || order.ShippingTrackingNumber || order.DeliveryPersonName) {
+      trackingDetailsHtml = `<div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-top: 20px;">
+        <h4 style="margin-top: 0; color: #76b900;">Tracking Information</h4>`;
+      if (order.ShippingMethod) trackingDetailsHtml += `<p style="margin: 5px 0; font-size: 14px;"><strong>Shipping Method:</strong> ${order.ShippingMethod}</p>`;
+      if (order.ShippingCompany) trackingDetailsHtml += `<p style="margin: 5px 0; font-size: 14px;"><strong>Shipping Company:</strong> ${order.ShippingCompany}</p>`;
+      if (order.ShippingTrackingNumber) trackingDetailsHtml += `<p style="margin: 5px 0; font-size: 14px;"><strong>Tracking Number:</strong> ${order.ShippingTrackingNumber}</p>`;
+      if (order.DeliveryPersonName || order.DeliveryPersonPhone) {
+        const name = order.DeliveryPersonName || 'N/A';
+        const phone = order.DeliveryPersonPhone ? ` (${order.DeliveryPersonPhone})` : '';
+        trackingDetailsHtml += `<p style="margin: 5px 0; font-size: 14px;"><strong>Delivery Person:</strong> ${name}${phone}</p>`;
+      }
+      trackingDetailsHtml += `</div>`;
+    }
+    
+    let trackingDetailsHtml = '';
+    if (order.ShippingMethod || order.ShippingTrackingNumber || order.DeliveryPersonName) {
+      trackingDetailsHtml = `<div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-top: 20px;">
+        <h4 style="margin-top: 0; color: #3b82f6;">Tracking Information</h4>`;
+      if (order.ShippingMethod) trackingDetailsHtml += `<p style="margin: 5px 0; font-size: 14px;"><strong>Shipping Method:</strong> ${order.ShippingMethod}</p>`;
+      if (order.ShippingCompany) trackingDetailsHtml += `<p style="margin: 5px 0; font-size: 14px;"><strong>Shipping Company:</strong> ${order.ShippingCompany}</p>`;
+      if (order.ShippingTrackingNumber) trackingDetailsHtml += `<p style="margin: 5px 0; font-size: 14px;"><strong>Tracking Number:</strong> ${order.ShippingTrackingNumber}</p>`;
+      if (order.DeliveryPersonName || order.DeliveryPersonPhone) {
+        const name = order.DeliveryPersonName || 'N/A';
+        const phone = order.DeliveryPersonPhone ? ` (${order.DeliveryPersonPhone})` : '';
+        trackingDetailsHtml += `<p style="margin: 5px 0; font-size: 14px;"><strong>Delivery Person:</strong> ${name}${phone}</p>`;
+      }
+      trackingDetailsHtml += `</div>`;
+    }
+
     const subject = template.subject.replace(/{{storeName}}/g, store.storeName).replace(/{{customerName}}/g, order.customerName).replace(/{{orderId}}/g, order._id.toString().slice(-6).toUpperCase());
     const html = template.body
       .replace(/{{storeName}}/g, store.storeName)
@@ -112,7 +142,14 @@ const sendStatusUpdateEmail = async (order, store, status) => {
       .replace(/{{totalAmount}}/g, order.totalAmount)
       .replace(/{{discountAmount}}/g, order.discountAmount || 0)
       .replace(/{{shippingCharge}}/g, order.shippingCharge || 0)
-      .replace(/{{reviewLinks}}/g, reviewLinksHtml);
+      .replace(/{{reviewLinks}}/g, reviewLinksHtml)
+        .replace(/{{trackingDetails}}/g, trackingDetailsHtml)
+      .replace(/{{trackingDetails}}/g, trackingDetailsHtml)
+      .replace(/{{ShippingMethod}}/g, order.ShippingMethod || 'N/A')
+      .replace(/{{ShippingTrackingNumber}}/g, order.ShippingTrackingNumber || 'N/A')
+      .replace(/{{ShippingCompany}}/g, order.ShippingCompany || 'N/A')
+      .replace(/{{DeliveryPersonName}}/g, order.DeliveryPersonName || 'N/A')
+      .replace(/{{DeliveryPersonPhone}}/g, order.DeliveryPersonPhone || 'N/A');
 
     await transporter.sendMail({ from: `"${store.storeName}" <${config.emailAddress}>`, to: order.customerEmail, subject, html });
   } catch (err) {
@@ -169,6 +206,7 @@ export const createOrder = async (req, res) => {
       discountAmount,
       shippingCharge,
       paymentMethod: paymentMethod || 'cod',
+      WhasAppOrder: paymentMethod === 'whatsapp',
       paymentStatus: "pending",
       orderStatus: "placed"
     });
@@ -363,7 +401,13 @@ export const getPublicOrder = async (req, res) => {
       orderItems: order.orderItems,
       customerName: order.customerName, // Name only, no phone/email for privacy
       store: order.store,
-      paymentMethod: order.paymentMethod
+      paymentMethod: order.paymentMethod,
+      WhasAppOrder: order.WhasAppOrder,
+      ShippingMethod: order.ShippingMethod,
+      ShippingTrackingNumber: order.ShippingTrackingNumber,
+      ShippingCompany: order.ShippingCompany,
+      DeliveryPersonName: order.DeliveryPersonName,
+      DeliveryPersonPhone: order.DeliveryPersonPhone
     };
 
     res.json(safeOrder);
@@ -395,7 +439,16 @@ export const getOrders = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { orderStatus, paymentStatus, resendEmail } = req.body;
+    const { 
+      orderStatus, 
+      paymentStatus, 
+      resendEmail,
+      ShippingMethod,
+      ShippingTrackingNumber,
+      ShippingCompany,
+      DeliveryPersonName,
+      DeliveryPersonPhone
+    } = req.body;
 
     const order = await Order.findById(id);
     if (!order) return res.status(404).json({ message: "Order not found" });
@@ -407,6 +460,12 @@ export const updateOrderStatus = async (req, res) => {
 
     if (orderStatus) order.orderStatus = orderStatus;
     if (paymentStatus) order.paymentStatus = paymentStatus;
+
+    if (ShippingMethod !== undefined) order.ShippingMethod = ShippingMethod;
+    if (ShippingTrackingNumber !== undefined) order.ShippingTrackingNumber = ShippingTrackingNumber;
+    if (ShippingCompany !== undefined) order.ShippingCompany = ShippingCompany;
+    if (DeliveryPersonName !== undefined) order.DeliveryPersonName = DeliveryPersonName;
+    if (DeliveryPersonPhone !== undefined) order.DeliveryPersonPhone = DeliveryPersonPhone;
 
     const updated = await order.save();
 

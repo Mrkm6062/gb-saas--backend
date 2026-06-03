@@ -43,6 +43,41 @@ const orderSchema = new mongoose.Schema(
       default: 0,
     },
 
+    ShippingMethod: {
+      type: String,
+      default: "",
+    },
+
+    ShippingTrackingNumber: {
+      type: String,
+      default: "",
+    },
+
+    ShippingCompany: {
+      type: String,
+      default: "",
+    },
+
+    DeliveryPersonName: {
+      type: String,
+      default: "",
+    },
+
+    DeliveryPersonPhone: {
+      type: String,
+      default: "",
+    },
+
+    WhasAppOrder: {
+      type: Boolean,
+      default: false,
+    },
+
+    paymentMethod: {
+      type: String,
+      default: "cod", // cod / razorpay /whatsapp
+    },
+
     paymentStatus: {
       type: String,
       default: "pending", // pending / paid
@@ -50,7 +85,7 @@ const orderSchema = new mongoose.Schema(
 
     orderStatus: {
       type: String,
-      default: "placed", // placed / shipped / delivered
+      default: "placed", // placed / shipped / delivered /returned / cancelled
     },
   },
   { timestamps: true }
