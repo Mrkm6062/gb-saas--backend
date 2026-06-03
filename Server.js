@@ -62,12 +62,21 @@ startCleanupDeletedStoresCron();
 
 app.set('trust proxy', 1);
 
-// Middleware
+// Bulletproof Manual CORS Middleware
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-store-id, x-store-code, x-store-domain, Origin, Accept');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
+
 app.use(express.json());
-app.use(cors({
-  origin: true, // Automatically reflects the requesting origin and allows all headers
-  credentials: true
-}));
 
 // Security Headers Middleware
 app.use(
