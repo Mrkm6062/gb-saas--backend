@@ -1,8 +1,8 @@
-import User from "../models/User.js";
-import Store from "../models/Store.js";
-import generateToken from "../utils/generateToken.js";
-import Counter from "../models/Counter.js";
-import SuperAdminStaff from "../models/SuperAdminStaff.js";
+import User from "../../models/User.js";
+import Store from "../../models/Store.js";
+import generateToken from "../../utils/generateToken.js";
+import Counter from "../../models/Counter.js";
+import SuperAdminStaff from "../../models/SuperAdminStaff.js";
 import nodemailer from "nodemailer";
 
 // REGISTER USER + CREATE STORE
