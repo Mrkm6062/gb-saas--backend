@@ -11,13 +11,20 @@ export const protectSuperadmin = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
       let user = await User.findById(decoded.id).select("-password");
+      let isStaff = false;
 
       // Fallback to check if the token belongs to an internal staff member
       if (!user) {
         user = await SuperAdminStaff.findById(decoded.id).select("-password");
+        if (user) isStaff = true;
       }
 
-      if (!user || user.role !== 'superadmin') {
+      if (!user) {
+        return res.status(401).json({ message: "Not authorized, user not found." });
+      }
+
+      // If they are a standard User, they MUST be a superadmin. If they are staff, they are allowed in.
+      if (!isStaff && user.role !== 'superadmin') {
         return res.status(403).json({ message: "Access denied. Superadmin only." });
       }
 
