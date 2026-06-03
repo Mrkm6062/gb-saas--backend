@@ -45,6 +45,7 @@ import themeRoutes from "./routes/themeRoutes.js";
 import superadminThemeRoutes from "./routes/superadminThemeRoutes.js";
 import themeCustomizationRoutes from "./routes/themeCustomizationRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
+import superadminStaffRoutes from "./routes/superadminStaffRoutes.js";
 
 
 dotenv.config();
@@ -139,6 +140,7 @@ app.use("/api/default-products", defaultProductRoutes); // Default products cata
 app.use("/api/superadmin/themes", superadminThemeRoutes); // Superadmin Theme Management
 app.use("/api/superadmin/default-products", superadminDefaultProductRoutes); // Superadmin Default Products
 app.use("/api/superadmin", superadminRoutes); // Superadmin access
+app.use("/api/staff", superadminStaffRoutes); // Superadmin Staff Management
 app.use("/api/themes", themeRoutes); // Store owner active theme fetching
 app.use("/api/theme-customization", themeCustomizationRoutes); // Theme customization
 app.use("/api/reviews", reviewRoutes); // Product Reviews

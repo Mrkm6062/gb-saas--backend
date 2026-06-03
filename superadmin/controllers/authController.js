@@ -2,6 +2,8 @@ import User from "../models/User.js";
 import Store from "../models/Store.js";
 import generateToken from "../utils/generateToken.js";
 import Counter from "../models/Counter.js";
+import SuperAdminStaff from "../models/SuperAdminStaff.js";
+import nodemailer from "nodemailer";
 
 // REGISTER USER + CREATE STORE
 export const registerUser = async (req, res) => {
@@ -46,34 +48,87 @@ export const registerUser = async (req, res) => {
 };
 
 // LOGIN SUPERADMIN
+// LOGIN SUPERADMIN / STAFF
 export const loginSuperAdmin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, otp } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: "Please provide email and password" });
+    if (!email) {
+      return res.status(400).json({ message: "Please provide an email address" });
     }
 
     const normalizedEmail = email.toLowerCase();
 
-    const user = await User.findOne({ email: normalizedEmail });
+    // 1. Find user in SuperAdminStaff or User (for the master superadmin)
+    let user = await User.findOne({ email: normalizedEmail, role: 'superadmin' });
+    let isStaff = false;
 
-    if (user && (await user.matchPassword(password))) {
-      // Ensure only superadmins can log in via this endpoint
-      if (user.role !== 'superadmin') {
-        return res.status(403).json({ message: "Access denied. Not a superadmin." });
+    if (!user) {
+      user = await SuperAdminStaff.findOne({ email: normalizedEmail });
+      isStaff = !!user;
+    }
+
+    if (!user) {
+      return res.status(401).json({ message: "Not authorized. Email not found in admin records." });
+    }
+
+    if (isStaff && user.Suspended) {
+      return res.status(403).json({ message: "Your account is suspended. Please contact the administrator." });
+    }
+
+    if (!otp) {
+      // STEP 1: Send OTP
+      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      user.otp = generatedOtp;
+      user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+      await user.save();
+
+      try {
+        if (process.env.SMTP_USER) {
+          const transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST || 'smtp.gmail.com',
+            port: process.env.SMTP_PORT || 587,
+            secure: process.env.SMTP_PORT == 465,
+            auth: {
+              user: process.env.SMTP_USER,
+              pass: process.env.SMTP_PASS
+            }
+          });
+          
+          await transporter.sendMail({
+            from: `"Galibrand Cloud" <${process.env.SMTP_USER}>`,
+            to: email,
+            subject: "Admin Login OTP - Galibrand Cloud",
+            html: `<div style="font-family: sans-serif; text-align: center; padding: 20px;"><h2>Your Admin Login OTP</h2><p>Your OTP is: <strong style="font-size: 24px; letter-spacing: 2px;">${generatedOtp}</strong></p><p>It is valid for 10 minutes.</p></div>`
+          });
+        } else {
+          console.log(`[DEBUG - No SMTP Configured] Admin OTP for ${email}: ${generatedOtp}`);
+        }
+      } catch (emailErr) {
+        console.error("Failed to send OTP email:", emailErr);
+        console.log(`[DEBUG] Admin OTP for ${email}: ${generatedOtp}`);
       }
+
+      return res.json({ message: "OTP sent successfully", step: "verify" });
+    } else {
+      // STEP 2: Verify OTP
+      if (user.otp !== otp || user.otpExpiry < new Date()) {
+        return res.status(400).json({ message: "Invalid or expired OTP" });
+      }
+
+      // Clear OTP
+      user.otp = undefined;
+      user.otpExpiry = undefined;
+      await user.save();
 
       res.json({
         _id: user._id,
-        userId: user.userId,
+        userId: user.userId || user.EmployeeId,
         name: user.name,
         email: user.email,
         role: user.role,
         token: generateToken(user._id),
       });
-    } else {
-      res.status(401).json({ message: "Invalid email or password" });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
