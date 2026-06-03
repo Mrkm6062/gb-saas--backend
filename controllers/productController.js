@@ -93,7 +93,9 @@ export const getProducts = async (req, res) => {
     }
 
     // Fetch products as plain JavaScript objects (.lean()) so we can mutate them easily
-    const products = await Product.find({ storeId }).lean();
+    const products = await Product.find({ storeId })
+      .populate({ path: 'category', model: 'Category', select: 'name' })
+      .lean();
 
     // Aggregate approved reviews to calculate average ratings and totals
     const reviewsAggr = await Review.aggregate([
@@ -106,7 +108,13 @@ export const getProducts = async (req, res) => {
     reviewsAggr.forEach(r => { reviewMap[r._id.toString()] = r; });
 
     // Attach review stats to each product
-    const productsWithReviews = products.map(p => ({ ...p, averageRating: reviewMap[p._id.toString()]?.averageRating || 0, totalReviews: reviewMap[p._id.toString()]?.totalReviews || 0 }));
+    const productsWithReviews = products.map(p => ({ 
+      ...p, 
+      categoryName: p.category && p.category.name ? p.category.name : '',
+      category: p.category && p.category._id ? p.category._id : p.category, // Restore ID to prevent breaking frontend
+      averageRating: reviewMap[p._id.toString()]?.averageRating || 0, 
+      totalReviews: reviewMap[p._id.toString()]?.totalReviews || 0 
+    }));
 
     res.json(productsWithReviews);
   } catch (error) {

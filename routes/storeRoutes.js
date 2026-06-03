@@ -28,7 +28,9 @@ router.get("/tenant/products", subdomainMiddleware, storeResolver, async (req, r
     if (!req.store) return res.status(404).json({ message: "Store not found" });
     
     // Only return active products for the public storefront, using .lean() for fast performance
-    const products = await Product.find({ storeId: req.store._id, isActive: true }).lean();
+    const products = await Product.find({ storeId: req.store._id, isActive: true })
+      .populate({ path: 'category', model: 'Category', select: 'name' })
+      .lean();
     
     // Aggregate approved reviews to calculate average ratings and totals
     const reviewsAggr = await Review.aggregate([
@@ -41,7 +43,13 @@ router.get("/tenant/products", subdomainMiddleware, storeResolver, async (req, r
     reviewsAggr.forEach(r => { reviewMap[r._id.toString()] = r; });
 
     // Attach review stats to each product
-    const productsWithReviews = products.map(p => ({ ...p, averageRating: reviewMap[p._id.toString()]?.averageRating || 0, totalReviews: reviewMap[p._id.toString()]?.totalReviews || 0 }));
+    const productsWithReviews = products.map(p => ({ 
+      ...p, 
+      categoryName: p.category && p.category.name ? p.category.name : '',
+      category: p.category && p.category._id ? p.category._id : p.category, // Restore ID to prevent breaking frontend
+      averageRating: reviewMap[p._id.toString()]?.averageRating || 0, 
+      totalReviews: reviewMap[p._id.toString()]?.totalReviews || 0 
+    }));
 
     res.json(productsWithReviews);
   } catch (error) {
