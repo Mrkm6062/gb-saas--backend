@@ -215,7 +215,7 @@ app.get("*", async (req, res) => {
       html = html.replace(/<title>.*?<\/title>/, titleAndMeta);
       
       if (req.store.favicon) {
-        html = html.replace('href="/favicon.ico?v=2"', `href="${req.store.favicon}"`);
+        html = html.replace(/<link[^>]*rel="'?icon["'][^>]*>/i, `<link rel="icon" href="${req.store.favicon}" />`);
       }
     }
     
