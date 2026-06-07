@@ -5,6 +5,7 @@ const storeSchema = new mongoose.Schema({
   ownerId: { type: String, required: true },
   storeSlug: { type: String, required: true, unique: true },
   storeName: { type: String, required: true },
+  empID: { type: String },
   subdomain: { type: String },
   category: { type: String },
   storeType: { type: String },

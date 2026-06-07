@@ -85,6 +85,9 @@ const productSchema = new mongoose.Schema({
   // 🔹 STATUS
   isActive: { type: Boolean, default: true },
 
+  // 🔹 CUSTOMIZABLE (For custom image prints/gifts)
+  isCustomizable: { type: Boolean, default: false },
+
   // 🔹 SEO FIELDS
   seo: {
     metaTitle: String,

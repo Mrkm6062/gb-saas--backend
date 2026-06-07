@@ -4,11 +4,25 @@ import Plan from "../models/Plan.js";
 import Domain from "../models/Domain.js";
 import { storage } from "../gcs.js";
 import Theme from "../models/Theme.js";
+import User from "../models/User.js";
+import SuperAdminStaff from "../models/SuperAdminStaff.js";
+import nodemailer from "nodemailer";
+
+// Nodemailer transporter for system emails (Welcome & Renewals)
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 // CREATE NEW STORE
 export const createStore = async (req, res) => {
   try {
-    const { name, category, storeType, metaDescription, planId } = req.body;
+    const { name, category, storeType, metaDescription, planId, empId } = req.body;
 
     // Prevent undefined.toLowerCase() crash
     if (!name || typeof name !== 'string') {
@@ -21,6 +35,17 @@ export const createStore = async (req, res) => {
 
     if (storeExists) {
       return res.status(400).json({ message: "Store name is already taken. Try another." });
+    }
+
+    // Validate Employee ID if provided
+    if (empId) {
+      const staff = await SuperAdminStaff.findOne({ EmployeeId: empId });
+      if (!staff) {
+        return res.status(400).json({ message: "Invalid Employee ID provided." });
+      }
+      if (staff.Suspended) {
+        return res.status(400).json({ message: "This Employee ID is currently suspended and cannot assist." });
+      }
     }
 
     // Safely generate Store Code using an atomic counter to prevent race conditions
@@ -58,6 +83,8 @@ export const createStore = async (req, res) => {
       storeId,
       ownerId: req.user.userId, // Attached securely by the 'protect' middleware
       category,
+      storeType: storeType || category,
+      empID: empId,
       metaDescription,
       status: 'active',
       planId: planId || null,
@@ -67,6 +94,32 @@ export const createStore = async (req, res) => {
       trialPlanDays,
       theme: 'default-theme'
     });
+
+    // Send Welcome & Trial Details Email
+    try {
+      const user = await User.findOne({ userId: req.user.userId });
+      if (user && user.email) {
+        await transporter.sendMail({
+          from: `"Galibrand Cloud" <${process.env.EMAIL_USER}>`,
+          to: user.email,
+          subject: `Welcome to Galibrand! Your store ${store.storeName} is ready`,
+          html: `
+            <div style="font-family: sans-serif; padding: 20px;">
+              <h2>Hello ${user.name},</h2>
+              <p>Congratulations! Your store <strong>${store.storeName}</strong> has been created successfully.</p>
+              <p>Your <strong>${trialPlanDays}-day free trial</strong> is now active and will end on <strong>${planStartDate.toDateString()}</strong>.</p>
+              <p>After your trial ends, your first billing cycle will expire on <strong>${planExpiryDate.toDateString()}</strong>.</p>
+              <p>Log in to your dashboard to start adding products and customizing your storefront!</p>
+              <br/>
+              <p>Best Regards,</p>
+              <p>The Galibrand Cloud Team</p>
+            </div>
+          `
+        });
+      }
+    } catch (emailErr) {
+      console.error("Failed to send welcome email:", emailErr.message);
+    }
 
     res.status(201).json({ message: "Store created successfully!", store });
   } catch (error) {
@@ -150,6 +203,32 @@ export const upgradeStorePlan = async (req, res) => {
     store.planExpiryDate = new Date(new Date().setDate(new Date().getDate() + 30)); // Adds 30 days
 
     await store.save();
+
+    // Send Repurchase / Upgrade Email
+    try {
+      const user = await User.findOne({ userId: req.user.userId });
+      if (user && user.email) {
+        await transporter.sendMail({
+          from: `"Galibrand Cloud" <${process.env.EMAIL_USER}>`,
+          to: user.email,
+          subject: `Subscription Renewed - ${store.storeName}`,
+          html: `
+            <div style="font-family: sans-serif; padding: 20px;">
+              <h2>Hello ${user.name},</h2>
+              <p>Thank you for your purchase! The subscription plan for your store <strong>${store.storeName}</strong> has been successfully upgraded/renewed to the <strong>${plan.name}</strong> plan.</p>
+              <p>Your new plan expiry date is <strong>${store.planExpiryDate.toDateString()}</strong>.</p>
+              <p>We appreciate your business!</p>
+              <br/>
+              <p>Best Regards,</p>
+              <p>The Galibrand Cloud Team</p>
+            </div>
+          `
+        });
+      }
+    } catch (emailErr) {
+      console.error("Failed to send subscription renewal email:", emailErr.message);
+    }
+
     res.json({ message: "Plan upgraded successfully!", store });
   } catch (error) {
     res.status(500).json({ message: error.message });

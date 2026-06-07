@@ -38,6 +38,7 @@ import { getPublicOrder, sendCustomerOtp, verifyCustomerOtp, getCustomerOrders }
 import platformPaymentRoutes from "./routes/platformPaymentRoutes.js";
 import { startSubscriptionReminderCron } from "./middleware/subscriptionReminder.js";
 import { startCleanupDeletedStoresCron } from "./middleware/cleanupDeletedStores.js";
+import { startCleanupCustomImagesCron } from "./middleware/cleanupCustomImages.js";
 import defaultProductRoutes from "./routes/defaultProductRoutes.js";
 import superadminDefaultProductRoutes from "./routes/superadminDefaultProductRoutes.js";
 import themePaymentRoutes from "./routes/themePaymentRoutes.js";
@@ -60,6 +61,7 @@ const app = express();
 // Initialize scheduled cron jobs
 startSubscriptionReminderCron();
 startCleanupDeletedStoresCron();
+startCleanupCustomImagesCron();
 
 app.set('trust proxy', 1);
 

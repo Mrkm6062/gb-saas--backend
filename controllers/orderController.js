@@ -12,6 +12,7 @@ import Razorpay from "razorpay";
 import crypto from "crypto";
 import { decrypt } from "../utils/crypto.js";
 import Domain from "../models/Domain.js";
+import { storage } from "../gcs.js";
 
 // Internal Helper function to send order confirmation email asynchronously
 const sendOrderConfirmationEmail = async (order, store) => {
@@ -28,7 +29,10 @@ const sendOrderConfirmationEmail = async (order, store) => {
     let subject = `Order Received - ${store.storeName}`;
     let html = '';
 
-    const itemsHtml = order.orderItems.map(item => `<tr><td style="padding:8px; border-bottom:1px solid #ddd;">${item.qty}x ${item.name}</td><td style="padding:8px; border-bottom:1px solid #ddd; text-align:right;">₹${item.price * item.qty}</td></tr>`).join('');
+    const itemsHtml = order.orderItems.map(item => {
+      const customImgHtml = item.customImage ? `<br><span style="font-size: 11px; color: #666; display: block; margin-top: 4px;">Custom Image:</span><a href="${item.customImage}" target="_blank"><img src="${item.customImage}" style="max-height: 60px; border-radius: 4px; margin-top: 4px; border: 1px solid #eee;" alt="Custom Design"/></a>` : '';
+      return `<tr><td style="padding:8px; border-bottom:1px solid #ddd; vertical-align:top;">${item.qty}x ${item.name}${customImgHtml}</td><td style="padding:8px; border-bottom:1px solid #ddd; text-align:right; vertical-align:top;">₹${item.price * item.qty}</td></tr>`;
+    }).join('');
     
     const domainRecord = await Domain.findOne({ storeId: store._id, status: 'connected' });
     const storeUrl = domainRecord ? `https://${domainRecord.domain}` : `https://${store.subdomain}`;
@@ -94,7 +98,10 @@ const sendStatusUpdateEmail = async (order, store, status) => {
       auth: { user: config.emailAddress, pass: config.appPassword }
     });
 
-    const itemsHtml = order.orderItems.map(item => `<tr><td style="padding:8px; border-bottom:1px solid #ddd;">${item.qty}x ${item.name}</td><td style="padding:8px; border-bottom:1px solid #ddd; text-align:right;">₹${item.price * item.qty}</td></tr>`).join('');
+    const itemsHtml = order.orderItems.map(item => {
+      const customImgHtml = item.customImage ? `<br><span style="font-size: 11px; color: #666; display: block; margin-top: 4px;">Custom Image:</span><a href="${item.customImage}" target="_blank"><img src="${item.customImage}" style="max-height: 60px; border-radius: 4px; margin-top: 4px; border: 1px solid #eee;" alt="Custom Design"/></a>` : '';
+      return `<tr><td style="padding:8px; border-bottom:1px solid #ddd; vertical-align:top;">${item.qty}x ${item.name}${customImgHtml}</td><td style="padding:8px; border-bottom:1px solid #ddd; text-align:right; vertical-align:top;">₹${item.price * item.qty}</td></tr>`;
+    }).join('');
     
     const domainRecord = await Domain.findOne({ storeId: store._id, status: 'connected' });
     const storeUrl = domainRecord ? `https://${domainRecord.domain}` : `https://${store.subdomain}`;
@@ -450,6 +457,26 @@ export const updateOrderStatus = async (req, res) => {
     if (ShippingCompany !== undefined) order.ShippingCompany = ShippingCompany;
     if (DeliveryPersonName !== undefined) order.DeliveryPersonName = DeliveryPersonName;
     if (DeliveryPersonPhone !== undefined) order.DeliveryPersonPhone = DeliveryPersonPhone;
+
+    // Clean up Google Cloud Storage if the order is cancelled
+    if (orderStatus === 'canceled' && previousStatus !== 'canceled') {
+      const bucketName = process.env.GCS_BUCKET;
+      if (bucketName) {
+        const bucketPrefix = `https://storage.googleapis.com/${bucketName}/`;
+        
+        for (const item of order.orderItems) {
+          if (item.customImage && item.customImage.startsWith(bucketPrefix)) {
+            const filePath = decodeURIComponent(item.customImage.replace(bucketPrefix, ''));
+            try {
+              await storage.bucket(bucketName).file(filePath).delete();
+              console.log(`Deleted cancelled order custom image: ${filePath}`);
+            } catch (err) {
+              console.error(`Failed to delete custom image from GCS: ${filePath}`, err.message);
+            }
+          }
+        }
+      }
+    }
 
     const updated = await order.save();
 
