@@ -1,6 +1,7 @@
 import DefaultProduct from "../models/DefaultProduct.js";
 import Product from "../models/Product.js";
 import Store from "../models/Store.js";
+import Category from "../models/Category.js";
 
 // GET DEFAULT PRODUCTS (Paginated)
 export const getDefaultProducts = async (req, res) => {
@@ -54,12 +55,43 @@ export const importDefaultProducts = async (req, res) => {
       existingIds = existingProducts.map(p => p.defaultProductId.toString());
     }
 
-    // Prepare documents for bulk insertion
-    const productsToInsert = defaultProducts
-      .filter(dp => !(importOnlyMissing && existingIds.includes(dp._id.toString())))
-      .map(({ _id, createdAt, updatedAt, storeTypes, ...productData }) => ({ ...productData, storeId, source: "default", defaultProductId: _id }));
+    // Filter out already imported products
+    const productsToProcess = defaultProducts.filter(dp => !(importOnlyMissing && existingIds.includes(dp._id.toString())));
 
-    if (!productsToInsert.length) return res.json({ message: "All available default products have already been imported.", count: 0 });
+    if (!productsToProcess.length) return res.json({ message: "All available default products have already been imported.", count: 0 });
+
+    const categoryCache = {};
+    const productsToInsert = [];
+
+    for (const dp of productsToProcess) {
+      let categoryId = null;
+
+      // Map string category to an actual Category ObjectId for this store
+      if (dp.category) {
+        const categoryName = dp.category.trim();
+        const cacheKey = categoryName.toLowerCase();
+
+        if (categoryCache[cacheKey]) {
+          categoryId = categoryCache[cacheKey];
+        } else {
+          // Find if the category already exists in the user's store
+          let storeCategory = await Category.findOne({ store: storeId, name: { $regex: new RegExp(`^${categoryName}$`, 'i') } });
+          
+          // If it doesn't exist, automatically create it
+          if (!storeCategory) {
+            const slug = categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+            storeCategory = await Category.create({ store: storeId, name: categoryName, slug, status: 'active' });
+          }
+          
+          categoryId = storeCategory._id;
+          categoryCache[cacheKey] = categoryId; // Cache it to save DB calls for the next products in the loop
+        }
+      }
+
+      const { _id, createdAt, updatedAt, storeTypes, category, ...productData } = dp;
+      
+      productsToInsert.push({ ...productData, category: categoryId, storeId, source: "default", defaultProductId: _id });
+    }
 
     const inserted = await Product.insertMany(productsToInsert);
     res.status(201).json({ message: "Default products imported successfully.", count: inserted.length });
