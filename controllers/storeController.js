@@ -22,7 +22,7 @@ const transporter = nodemailer.createTransport({
 // CREATE NEW STORE
 export const createStore = async (req, res) => {
   try {
-    const { name, category, storeType, metaDescription, planId, empId } = req.body;
+    const { name, storeType, metaDescription, planId, empId } = req.body;
 
     // Prevent undefined.toLowerCase() crash
     if (!name || typeof name !== 'string') {
@@ -82,8 +82,7 @@ export const createStore = async (req, res) => {
       subdomain: `${storeSlug}.galibrand.cloud`,
       storeId,
       ownerId: req.user.userId, // Attached securely by the 'protect' middleware
-      category,
-      storeType: storeType || category,
+      storeType,
       empID: empId,
       metaDescription,
       status: 'active',
@@ -131,7 +130,7 @@ export const createStore = async (req, res) => {
 export const updateStore = async (req, res) => {
   try {
     const { id } = req.params; // Can be MongoDB _id or custom storeId (e.g., GBS001)
-    const { storeName, websiteTitle, logo, favicon, banner, category, storeType, theme, supportPhoneNumbers, supportEmail, locationAddress, mapLocation } = req.body;
+    const { storeName, websiteTitle, logo, favicon, banner, storeType, theme, supportPhoneNumbers, supportEmail, locationAddress, mapLocation } = req.body;
 
     // Ensure the store belongs to the authenticated user
     const query = { ownerId: req.user.userId };
@@ -154,7 +153,6 @@ export const updateStore = async (req, res) => {
     if (logo !== undefined) store.logo = logo;
     if (favicon !== undefined) store.favicon = favicon;
     if (banner !== undefined) store.banner = banner;
-    if (category !== undefined) store.category = category;
     if (storeType !== undefined) store.storeType = storeType;
     if (theme !== undefined) {
       const themeDoc = await Theme.findOne({ themeId: theme });

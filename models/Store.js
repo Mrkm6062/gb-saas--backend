@@ -7,7 +7,6 @@ const storeSchema = new mongoose.Schema({
   storeName: { type: String, required: true },
   empID: { type: String },
   subdomain: { type: String },
-  category: { type: String },
   storeType: { type: String },
   metaDescription: { type: String },
   status: { type: String, default: "active" },
