@@ -1,5 +1,5 @@
 import express from "express";
-import { createStore, getMyStore, getStoreBySubdomain, updateStore, upgradeStorePlan, getStoreData, restoreStore, deleteStore } from "../controllers/storeController.js";
+import { createStore, getMyStore, getStoreBySubdomain, updateStore, upgradeStorePlan, getStoreData, restoreStore, deleteStore, verifyEmployee } from "../controllers/storeController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { subdomainMiddleware } from "../middleware/subdomain.js";
 import { storeResolver } from "../middleware/storeResolver.js";
@@ -14,6 +14,7 @@ router.get("/data", storeResolver, getStoreData);
 
 // --- USER-AUTHENTICATED ROUTES (for the admin dashboard) ---
 router.post("/", protect, createStore);
+router.post("/verify-employee", protect, verifyEmployee);
 router.get("/me", protect, getMyStore);
 
 // --- TENANT-SPECIFIC PUBLIC ROUTES (for storefront widgets/pages) ---
