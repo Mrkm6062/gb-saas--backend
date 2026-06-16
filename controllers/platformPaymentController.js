@@ -1,6 +1,7 @@
 import PlatformPaymentSettings from "../models/PlatformPaymentSettings.js";
 import Store from "../models/Store.js";
 import Razorpay from "razorpay";
+import Plan from "../models/Plan.js";
 import crypto from "crypto";
 import { encrypt, decrypt } from "../utils/crypto.js";
 
@@ -107,14 +108,29 @@ export const verifyPayment = async (req, res) => {
       const planExpiryDate = new Date();
       planExpiryDate.setDate(planExpiryDate.getDate() + 30); // Grant 30 days of access
 
+      const plan = await Plan.findById(planId);
+      const invoiceId = `INV-${Date.now().toString().slice(-6).toUpperCase()}`;
+
       await Store.findByIdAndUpdate(storeId, { 
-        subscriptionStatus: 'active', 
-        planId: planId,
-        isTrialActive: false,
-        planStartDate: new Date(),
-        planExpiryDate: planExpiryDate,
-        lastPaymentId: razorpay_payment_id // Log the payment confirmation
-      }, { strict: false }); // Ensures the ID writes correctly even if strict mode limits fields initially
+        $set: {
+          subscriptionStatus: 'active', 
+          planId: planId,
+          isTrialActive: false,
+          planStartDate: new Date(),
+          planExpiryDate: planExpiryDate,
+          lastPaymentId: razorpay_payment_id // Log the payment confirmation
+        },
+        $push: {
+          billingHistory: {
+            planId: plan._id,
+            planName: plan.name,
+            amount: plan.price,
+            date: new Date(),
+            transactionId: razorpay_payment_id,
+            invoiceId: invoiceId
+          }
+        }
+      });
 
       res.json({ message: "Payment verified successfully", success: true });
     } else {

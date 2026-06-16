@@ -26,6 +26,14 @@ const storeSchema = new mongoose.Schema({
     purchaseDate: { type: Date, default: Date.now },
     transactionId: { type: String, required: true }
 }],
+  billingHistory: [{
+    planId: { type: mongoose.Schema.Types.ObjectId, ref: "Plan" },
+    planName: String,
+    amount: Number,
+    date: { type: Date, default: Date.now },
+    transactionId: String,
+    invoiceId: String
+  }],
   supportPhoneNumbers: { type: [String], default: [] },
   supportEmail: { type: String, default: "" },
   locationAddress: { type: String, default: "" },

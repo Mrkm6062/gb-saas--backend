@@ -6,6 +6,7 @@ import { storage } from "../gcs.js";
 import Theme from "../models/Theme.js";
 import User from "../models/User.js";
 import SuperAdminStaff from "../models/SuperAdminStaff.js";
+import PlatformSettings from "../models/PlatformSettings.js";
 import nodemailer from "nodemailer";
 
 // Nodemailer transporter for system emails (Welcome & Renewals)
@@ -216,17 +217,50 @@ export const upgradeStorePlan = async (req, res) => {
     store.planStartDate = new Date();
     store.planExpiryDate = new Date(new Date().setDate(new Date().getDate() + 30)); // Adds 30 days
 
+    const invoiceId = `INV-${Date.now().toString().slice(-6).toUpperCase()}`;
+    store.billingHistory.push({
+      planId: plan._id,
+      planName: plan.name,
+      amount: plan.price,
+      date: new Date(),
+      transactionId: "FREE_PLAN_UPGRADE",
+      invoiceId
+    });
+
     await store.save();
 
     // Send Repurchase / Upgrade Email
     try {
       const user = await User.findOne({ userId: req.user.userId });
       if (user && user.email) {
+        // Fetch the global platform settings for the invoice template
+        const settings = await PlatformSettings.findOne({ key: "global" });
+        let invoiceHtml = '';
+        
+        if (settings && settings.subscriptionInvoiceTemplate) {
+          const gstHtml = settings.isGstEnabled && settings.gstNumber ? `<p style="margin: 2px 0; font-size: 12px; color: #666;">GSTIN: ${settings.gstNumber}</p>` : '';
+          const cinHtml = settings.isCinEnabled && settings.cinNumber ? `<p style="margin: 2px 0; font-size: 12px; color: #666;">CIN: ${settings.cinNumber}</p>` : '';
+          
+          invoiceHtml = settings.subscriptionInvoiceTemplate
+            .replace(/{{storeName}}/g, store.storeName)
+            .replace(/{{ownerName}}/g, user.name)
+            .replace(/{{ownerEmail}}/g, user.email)
+            .replace(/{{invoiceId}}/g, invoiceId)
+            .replace(/{{purchaseDate}}/g, new Date().toLocaleDateString())
+            .replace(/{{planName}}/g, plan.name)
+            .replace(/{{amount}}/g, plan.price)
+            .replace(/{{mainLogoUrl}}/g, settings.mainLogoUrl || 'https://placehold.co/200x50?text=Logo')
+            .replace(/{{companyAddress}}/g, settings.companyAddress || "")
+            .replace(/{{companyPhone}}/g, settings.companyPhone || "")
+            .replace(/{{gstHtml}}/g, gstHtml)
+            .replace(/{{cinHtml}}/g, cinHtml);
+        }
+
         await transporter.sendMail({
           from: `"Galibrand Cloud" <${process.env.EMAIL_USER}>`,
           to: user.email,
-          subject: `Subscription Renewed - ${store.storeName}`,
-          html: `
+          subject: `Subscription Renewed & Invoice - ${store.storeName}`,
+          html: invoiceHtml || `
             <div style="font-family: sans-serif; padding: 20px;">
               <h2>Hello ${user.name},</h2>
               <p>Thank you for your purchase! The subscription plan for your store <strong>${store.storeName}</strong> has been successfully upgraded/renewed to the <strong>${plan.name}</strong> plan.</p>
