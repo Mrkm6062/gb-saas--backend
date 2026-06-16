@@ -4,10 +4,20 @@ import Store from "../models/Store.js";
 // Resolves the store from the database using the custom domain or subdomain
 export const storeResolver = async (req, res, next) => {
   try {
-    let host = req.headers.host || "";
+    let store = null;
     
-    // Respect origin header for API requests from storefront
-    if (req.headers.origin) {
+    // 1. Direct explicit override (Great for local testing & specific domain deployments)
+    const explicitStoreDomain = req.headers['x-store-domain'] || req.headers['x-forwarded-host'];
+    const explicitStoreId = req.headers['x-store-id'];
+
+    if (explicitStoreId && explicitStoreId !== "undefined" && explicitStoreId !== "null") {
+      store = await Store.findOne({ _id: explicitStoreId, isDeleted: { $ne: true } }).populate('planId');
+    }
+
+    let host = explicitStoreDomain || req.headers.host || "";
+    
+    // Respect origin header for API requests from storefront if host isn't explicitly overridden
+    if (!explicitStoreDomain && req.headers.origin) {
       try {
         const originUrl = new URL(req.headers.origin);
         host = originUrl.host;
@@ -19,21 +29,41 @@ export const storeResolver = async (req, res, next) => {
     // Normalize: remove "www." prefix
     const normalizedHost = hostname.startsWith("www.") ? hostname.slice(4) : hostname;
 
-    let store = null;
-
     // FIRST -> Check custom domain
-    const domainRecord = await Domain.findOne({ domain: normalizedHost, status: "connected" });
-    if (domainRecord) {
-      store = await Store.findOne({ _id: domainRecord.storeId, isDeleted: { $ne: true } }).populate('planId');
+    if (!store) {
+      const domainRecord = await Domain.findOne({ domain: normalizedHost, status: "connected" });
+      if (domainRecord) {
+        store = await Store.findOne({ _id: domainRecord.storeId, isDeleted: { $ne: true } }).populate('planId');
+      }
     }
 
     // SECOND -> Fallback to subdomain (if no custom domain match)
-    if (!store && (hostname.endsWith(".galibrand.cloud") || hostname.endsWith(".localhost") || hostname.endsWith(".nip.io"))) {
-      const subdomain = hostname.split(".")[0];
-      const ignored = ["www", "api", "dashboard", "cname", "store"];
-      
-      if (!ignored.includes(subdomain)) {
-        store = await Store.findOne({ storeSlug: subdomain, isDeleted: { $ne: true } }).populate('planId');
+    if (!store) {
+      const rootDomains = ["galibrand.cloud", "localhost", "nip.io"];
+      if (process.env.ROOT_DOMAIN) rootDomains.push(process.env.ROOT_DOMAIN);
+
+      let isSubdomainMatch = false;
+      let subdomain = "";
+
+      for (const domain of rootDomains) {
+        if (hostname.endsWith(`.${domain}`)) {
+          isSubdomainMatch = true;
+          subdomain = hostname.replace(`.${domain}`, "");
+          break;
+        }
+      }
+
+      // Fallback for nip.io
+      if (!isSubdomainMatch && hostname.endsWith(".nip.io")) {
+        isSubdomainMatch = true;
+        subdomain = hostname.split(".")[0];
+      }
+
+      if (subdomain) {
+        const ignored = ["www", "api", "dashboard", "cname", "store"];
+        if (!ignored.includes(subdomain)) {
+          store = await Store.findOne({ storeSlug: subdomain, isDeleted: { $ne: true } }).populate('planId');
+        }
       }
     }
 
@@ -44,8 +74,8 @@ export const storeResolver = async (req, res, next) => {
       }
 
       // Automatically expire the subscription if the end date has passed
-      if (store.subscriptionStatus !== 'pending' && store.planExpiryDate && new Date() > store.planExpiryDate) {
-        store.subscriptionStatus = 'pending';
+      if (store.subscriptionStatus !== 'expired' && store.planExpiryDate && new Date() > store.planExpiryDate) {
+        store.subscriptionStatus = 'expired';
         store.isTrialActive = false;
         await store.save();
       }
