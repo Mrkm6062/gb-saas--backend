@@ -22,17 +22,7 @@ const themeSchema = new mongoose.Schema(
     },
 
     category: {
-      type: [String], // multiple allowed
-      enum: [
-        "restaurant",
-        "nasta",
-        "vegetable",
-        "ecommerce",
-        "clothing",
-        "kirana",
-        "general",
-      ],
-      default: ["general"],
+      type: [String],
     },
 
     description: {
