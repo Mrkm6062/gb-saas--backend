@@ -19,6 +19,22 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// VERIFY EMPLOYEE ID (Used by frontend during store creation)
+export const verifyEmployee = async (req, res) => {
+  try {
+    const { empId } = req.body;
+    if (!empId) return res.status(400).json({ message: "Employee ID is required." });
+    
+    const staff = await SuperAdminStaff.findOne({ EmployeeId: empId });
+    if (!staff) return res.status(404).json({ message: "Invalid Employee ID." });
+    if (staff.Suspended) return res.status(400).json({ message: "This Employee ID is currently suspended." });
+    
+    res.json({ name: staff.name });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // CREATE NEW STORE
 export const createStore = async (req, res) => {
   try {
