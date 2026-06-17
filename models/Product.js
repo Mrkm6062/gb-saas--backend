@@ -87,6 +87,14 @@ const productSchema = new mongoose.Schema({
 
   // 🔹 CUSTOMIZABLE (For custom image prints/gifts)
   isCustomizable: { type: Boolean, default: false },
+  allowCustomText: { type: Boolean, default: false },
+
+  customizableArea: {
+    x: { type: Number, default: 25 },
+    y: { type: Number, default: 25 },
+    width: { type: Number, default: 50 },
+    height: { type: Number, default: 50 },
+  },
 
   // 🔹 SEO FIELDS
   seo: {

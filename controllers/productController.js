@@ -7,7 +7,7 @@ export const createProduct = async (req, res) => {
   try {
     const { 
       name, storeId, description, category, subCategory, 
-      images, variants, basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable,
+      images, variants, basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable, allowCustomText, customizableArea,
       price, stock // Legacy fallbacks
     } = req.body;
 
@@ -145,7 +145,7 @@ export const updateProduct = async (req, res) => {
 
     const { 
       name, description, category, subCategory, images, variants, 
-      basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable,
+      basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable, allowCustomText, customizableArea,
       price, stock // Legacy fallbacks
     } = req.body;
 
