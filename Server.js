@@ -96,7 +96,17 @@ app.use(
     referrerPolicy: {
       policy: "strict-origin-when-cross-origin",
     },
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'", "*", "'unsafe-inline'", "'unsafe-eval'"],
+        scriptSrc: ["'self'", "*", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc: ["'self'", "*", "'unsafe-inline'"],
+        imgSrc: ["'self'", "*", "data:", "blob:"],
+        frameSrc: ["'self'", "*"],
+        connectSrc: ["'self'", "*"],
+        fontSrc: ["'self'", "*", "data:"],
+      },
+    },
   })
 );
 
