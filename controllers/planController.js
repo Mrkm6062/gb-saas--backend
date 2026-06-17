@@ -4,7 +4,8 @@ import Store from "../models/Store.js";
 // GET ALL PLANS
 export const getPlans = async (req, res) => {
   try {
-    const plans = await Plan.find();
+    // Sort by price ascending to ensure a consistent order on the pricing page
+    const plans = await Plan.find().sort({ price: 1 });
     res.json(plans);
   } catch (error) {
     res.status(500).json({ message: error.message });
