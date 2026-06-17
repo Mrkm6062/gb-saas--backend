@@ -64,7 +64,9 @@ export const createProduct = async (req, res) => {
       stock: calculatedTotalStock,
       isActive: isActive !== undefined ? isActive : true,
       seo,
-      isCustomizable: isCustomizable || false
+      isCustomizable: isCustomizable || false,
+      allowCustomText: allowCustomText || false,
+      customizableArea: customizableArea || { x: 25, y: 25, width: 50, height: 50 }
     });
 
     res.status(201).json(product);
@@ -159,6 +161,8 @@ export const updateProduct = async (req, res) => {
     if (isActive !== undefined) product.isActive = isActive;
     if (seo !== undefined) product.seo = seo;
     if (isCustomizable !== undefined) product.isCustomizable = isCustomizable;
+    if (allowCustomText !== undefined) product.allowCustomText = allowCustomText;
+    if (customizableArea !== undefined) product.customizableArea = customizableArea;
 
     if (variants !== undefined) {
       product.variants = variants;
