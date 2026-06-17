@@ -96,7 +96,31 @@ app.use(
     referrerPolicy: {
       policy: "strict-origin-when-cross-origin",
     },
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://static.cloudflareinsights.com",
+        ],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://fonts.googleapis.com",
+        ],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        frameSrc: ["'self'", "https://www.google.com"],
+        imgSrc: [
+          "'self'",
+          "data:",
+          "blob:",
+          "https://storage.googleapis.com",
+          "https://*.gstatic.com",
+        ],
+        connectSrc: ["'self'", "*"],
+      },
+    },
   })
 );
 
