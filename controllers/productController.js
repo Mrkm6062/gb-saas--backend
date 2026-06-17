@@ -7,7 +7,7 @@ export const createProduct = async (req, res) => {
   try {
     const { 
       name, storeId, description, category, subCategory, 
-      images, variants, basePrice, unitType, tags, totalStock, isActive, seo,
+      images, variants, basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable,
       price, stock // Legacy fallbacks
     } = req.body;
 
@@ -63,7 +63,8 @@ export const createProduct = async (req, res) => {
       totalStock: calculatedTotalStock,
       stock: calculatedTotalStock,
       isActive: isActive !== undefined ? isActive : true,
-      seo
+      seo,
+      isCustomizable: isCustomizable || false
     });
 
     res.status(201).json(product);
@@ -144,7 +145,7 @@ export const updateProduct = async (req, res) => {
 
     const { 
       name, description, category, subCategory, images, variants, 
-      basePrice, unitType, tags, totalStock, isActive, seo,
+      basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable,
       price, stock // Legacy fallbacks
     } = req.body;
 
@@ -157,6 +158,7 @@ export const updateProduct = async (req, res) => {
     if (tags !== undefined) product.tags = tags;
     if (isActive !== undefined) product.isActive = isActive;
     if (seo !== undefined) product.seo = seo;
+    if (isCustomizable !== undefined) product.isCustomizable = isCustomizable;
 
     if (variants !== undefined) {
       product.variants = variants;
