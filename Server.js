@@ -98,13 +98,28 @@ app.use(
     },
     contentSecurityPolicy: {
       directives: {
-        defaultSrc: ["'self'", "*", "'unsafe-inline'", "'unsafe-eval'"],
-        scriptSrc: ["'self'", "*", "'unsafe-inline'", "'unsafe-eval'"],
-        styleSrc: ["'self'", "*", "'unsafe-inline'"],
-        imgSrc: ["'self'", "*", "data:", "blob:"],
-        frameSrc: ["'self'", "*"],
-        connectSrc: ["'self'", "*"],
-        fontSrc: ["'self'", "*", "data:"],
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://static.cloudflareinsights.com",
+        ],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        frameSrc: ["'self'", "https://www.google.com"],
+        imgSrc: [
+          "'self'",
+          "data:",
+          "blob:",
+          "https://storage.googleapis.com",
+          "https://*.googleapis.com",
+          "https://*.gstatic.com",
+        ],
+        connectSrc: [
+          "'self'",
+          "https://*.googleapis.com",
+          "https://*.cloudflareinsights.com",
+        ],
       },
     },
   })
