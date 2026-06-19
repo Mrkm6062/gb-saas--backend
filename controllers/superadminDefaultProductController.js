@@ -1,4 +1,5 @@
 import DefaultProduct from "../models/DefaultProduct.js";
+import crypto from "crypto";
 
 // GET ALL DEFAULT PRODUCTS (Paginated)
 export const getAllDefaultProducts = async (req, res) => {
@@ -28,9 +29,12 @@ export const createDefaultProduct = async (req, res) => {
   try {
     const payload = { ...req.body };
     
-    // Auto-generate a unique slug to prevent MongoDB duplicate key errors
+    // Generate a cryptographically unique slug to prevent MongoDB duplicate key errors
+    // across parallel batch imports
     if (payload.name) {
-      payload.slug = payload.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now();
+      const baseSlug = payload.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const uniqueId = crypto.randomUUID().split('-').slice(0, 2).join('');
+      payload.slug = `${baseSlug}-${uniqueId}`;
     }
 
     const product = await DefaultProduct.create(payload);
@@ -48,7 +52,9 @@ export const updateDefaultProduct = async (req, res) => {
     
     // Ensure a slug exists during updates to prevent unique index constraints from failing
     if (!payload.slug && payload.name) {
-      payload.slug = payload.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now();
+      const baseSlug = payload.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const uniqueId = crypto.randomUUID().split('-').slice(0, 2).join('');
+      payload.slug = `${baseSlug}-${uniqueId}`;
     }
 
     const product = await DefaultProduct.findByIdAndUpdate(req.params.id, payload, { new: true });
