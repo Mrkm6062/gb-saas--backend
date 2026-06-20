@@ -47,8 +47,12 @@ export const uploadImages = async (req, res) => {
       }
     }
 
-    // Validate that all uploaded files are strictly images (both MIME and actual content)
+    // Validate file sizes and check that all uploaded files are strictly images (both MIME and actual content)
     for (const file of req.files) {
+      if (file.size > 3 * 1024 * 1024) {
+        return res.status(400).json({ message: `File size too large: ${file.originalname}. Maximum allowed size is 3MB.` });
+      }
+
       if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('video/')) {
         return res.status(400).json({ message: `Invalid file type: ${file.originalname}. Only image and video files are allowed.` });
       }
