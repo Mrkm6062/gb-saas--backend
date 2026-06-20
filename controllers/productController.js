@@ -6,7 +6,7 @@ import Review from "../models/Review.js";
 export const createProduct = async (req, res) => {
   try {
     const { 
-      name, storeId, description, category, subCategory, 
+      name, storeId, description, category, foodtype, subCategory, 
       images, variants, basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable, allowCustomText, customizableArea,
       price, stock // Legacy fallbacks
     } = req.body;
@@ -53,6 +53,7 @@ export const createProduct = async (req, res) => {
       slug,
       description,
       category,
+      foodtype,
       subCategory,
       images: images || [],
       variants: variants || [],
@@ -146,7 +147,7 @@ export const updateProduct = async (req, res) => {
     }
 
     const { 
-      name, description, category, subCategory, images, variants, 
+      name, description, category, foodtype, subCategory, images, variants, 
       basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable, allowCustomText, customizableArea,
       price, stock // Legacy fallbacks
     } = req.body;
@@ -154,6 +155,7 @@ export const updateProduct = async (req, res) => {
     if (name !== undefined) product.name = name;
     if (description !== undefined) product.description = description;
     if (category !== undefined) product.category = category;
+    if (foodtype !== undefined) product.foodtype = foodtype;
     if (subCategory !== undefined) product.subCategory = subCategory;
     if (images !== undefined) product.images = images;
     if (unitType !== undefined) product.unitType = unitType;

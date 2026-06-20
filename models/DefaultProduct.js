@@ -37,7 +37,8 @@ const productSchema = new mongoose.Schema({
   description: { type: String },
 
   // 🔹 CATEGORY SUPPORT (multi-use)
-  category: { type: String }, 
+  category: { type: String },
+  foodtype: { type: String }, // "Non-Veg", "Veg", "Vegan", "Gluten-Free" 
   subCategory: { type: String },
 
   // Example:
