@@ -49,6 +49,15 @@ const themeCustomizationSchema = new mongoose.Schema(
     footer: {
       bgColor: { type: String, default: "#111827" },
       textColor: { type: String, default: "#ffffff" },
+      officialdesktopLogo: { type: String, default: "" },
+      officialmobileLogo: { type: String, default: "" },
+        description: { type: String, default: "© 2024 Your Store. All rights reserved." },
+        newsletter: {
+          enabled: { type: Boolean, default: false },
+          placeholder: { type: String, default: "Enter your email" },
+          buttonText: { type: String, default: "Subscribe" },
+        },
+        
     },
     whyChooseUs: {
       enabled: { type: Boolean, default: true},
