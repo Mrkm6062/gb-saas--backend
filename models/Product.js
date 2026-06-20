@@ -36,15 +36,14 @@ const productSchema = new mongoose.Schema({
   slug: { type: String, unique: true }, // SEO URL
   description: { type: String },
 
-  // 🔹 CATEGORY SUPPORT (multi-use)
+  // 🔹 Brand & CATEGORY SUPPORT (multi-use)
+  Brand: { type: String },
   category: { type: String },
   foodtype: { type: String }, // "Non-Veg", "Veg", "Vegan", "Gluten-Free"
   subCategory: { type: String },
 
-  // Example:
-  // "vegetable", "nasta", "restaurant", "clothes", "kirana"
 
-  // 🔹 BRAND / STORE (multi-tenant)
+  // 🔹 STORE (multi-tenant)
   storeId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: "Store", 
@@ -70,11 +69,13 @@ const productSchema = new mongoose.Schema({
 
   // 🔹 DEFAULT PRICE (fallback)
   basePrice: { type: Number },
+  discount: { type: Number, default: 0 }, // % discount for promotions
+  price: { type: Number }, // Final price after discount (calculated field) price = basePrice - (basePrice * discount / 100)
 
   // 🔹 UNIT TYPE (important for your use case)
   unitType: {
     type: String,
-    enum: ["kg", "gram", "piece", "plate", "pack", "size"]
+    enum: ["kg", "gram", "piece", "plate", "pack", "bottle", "box", "liter", "packet", "dozen",]
   },
 
   // 🔹 TAGS

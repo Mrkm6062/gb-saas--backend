@@ -6,7 +6,7 @@ import Review from "../models/Review.js";
 export const createProduct = async (req, res) => {
   try {
     const { 
-      name, storeId, description, category, foodtype, subCategory, 
+      name, storeId, description, category, foodtype, subCategory, Brand, brand, discount,
       images, variants, basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable, allowCustomText, customizableArea,
       price, stock // Legacy fallbacks
     } = req.body;
@@ -44,8 +44,10 @@ export const createProduct = async (req, res) => {
       calculatedTotalStock = variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
     }
 
-    // 5. Determine base price
-    const calculatedBasePrice = basePrice !== undefined ? basePrice : (price || (variants && variants.length > 0 ? variants[0].price : 0));
+    // 5. Determine base price and discount
+    const calculatedBasePrice = basePrice !== undefined ? Number(basePrice) : (price !== undefined ? Number(price) : 0);
+    const calculatedDiscount = discount !== undefined ? Number(discount) : 0;
+    const finalPrice = calculatedBasePrice - (calculatedBasePrice * calculatedDiscount / 100);
 
     const product = await Product.create({
       storeId,
@@ -55,10 +57,12 @@ export const createProduct = async (req, res) => {
       category,
       foodtype,
       subCategory,
+      Brand: Brand || brand || "",
       images: images || [],
       variants: variants || [],
       basePrice: calculatedBasePrice,
-      price: calculatedBasePrice,
+      discount: calculatedDiscount,
+      price: finalPrice,
       unitType,
       tags: tags || [],
       totalStock: calculatedTotalStock,
@@ -147,7 +151,7 @@ export const updateProduct = async (req, res) => {
     }
 
     const { 
-      name, description, category, foodtype, subCategory, images, variants, 
+      name, description, category, foodtype, subCategory, Brand, brand, discount, images, variants, 
       basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable, allowCustomText, customizableArea,
       price, stock // Legacy fallbacks
     } = req.body;
@@ -157,6 +161,9 @@ export const updateProduct = async (req, res) => {
     if (category !== undefined) product.category = category;
     if (foodtype !== undefined) product.foodtype = foodtype;
     if (subCategory !== undefined) product.subCategory = subCategory;
+    if (Brand !== undefined) product.Brand = Brand;
+    else if (brand !== undefined) product.Brand = brand;
+    if (discount !== undefined) product.discount = Number(discount);
     if (images !== undefined) product.images = images;
     if (unitType !== undefined) product.unitType = unitType;
     if (tags !== undefined) product.tags = tags;
@@ -173,7 +180,6 @@ export const updateProduct = async (req, res) => {
         product.stock = product.totalStock;
         if (basePrice === undefined && price === undefined) {
           product.basePrice = variants[0].price;
-          product.price = variants[0].price;
         }
       } else if (totalStock !== undefined || stock !== undefined) {
         product.totalStock = totalStock !== undefined ? totalStock : stock;
@@ -185,9 +191,12 @@ export const updateProduct = async (req, res) => {
     }
     
     if (basePrice !== undefined || price !== undefined) {
-      product.basePrice = basePrice !== undefined ? basePrice : price;
-      product.price = product.basePrice;
+      product.basePrice = basePrice !== undefined ? Number(basePrice) : Number(price);
     }
+
+    const calculatedBasePrice = product.basePrice || 0;
+    const calculatedDiscount = product.discount || 0;
+    product.price = calculatedBasePrice - (calculatedBasePrice * calculatedDiscount / 100);
 
     const updated = await product.save();
 
