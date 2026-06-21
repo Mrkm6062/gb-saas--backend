@@ -61,10 +61,12 @@ const themeCustomizationSchema = new mongoose.Schema(
     },
     whyChooseUs: {
       enabled: { type: Boolean, default: true},
-
       title: { type: String, default: "Why Choose Us" },
-
       subtitle: { type: String, default: ""},
+      bgColor: { type: String, default: "#f9fafb" },
+      textColor: { type: String, default: "#111111" },
+      itemTextColor: { type: String, default: "#111111" },
+      itemTitleColor: { type: String, default: "#111111" },
 
       items: [
        {
