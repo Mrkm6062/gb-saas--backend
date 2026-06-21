@@ -116,17 +116,45 @@ export const uploadImages = async (req, res) => {
         // Convert all other image formats to .avif for maximum compression
         let sharpInstance = sharp(file.buffer);
         const metadata = await sharpInstance.metadata();
-        if (metadata.width > 1200 || metadata.height > 1200) {
-          sharpInstance = sharpInstance.resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true });
+        const type = req.body.type || 'product';
+
+        let targetWidth = 1200;
+        let targetHeight = 1200;
+        let quality = 75;
+
+        if (type === 'logo') {
+          targetWidth = 300;
+          targetHeight = 300;
+          quality = 80;
+        } else if (type === 'favicon') {
+          targetWidth = 128;
+          targetHeight = 128;
+          quality = 85;
+        } else if (type === 'icon') {
+          targetWidth = 128;
+          targetHeight = 128;
+          quality = 80;
+        } else if (type === 'banner') {
+          targetWidth = 1600;
+          targetHeight = 1600;
+          quality = 75;
+        } else if (type === 'product') {
+          targetWidth = 1000;
+          targetHeight = 1000;
+          quality = 75;
+        }
+
+        if (metadata.width > targetWidth || metadata.height > targetHeight) {
+          sharpInstance = sharpInstance.resize({ width: targetWidth, height: targetHeight, fit: 'inside', withoutEnlargement: true });
         }
         fileBuffer = await sharpInstance
-          .avif({ quality: 75, effort: 3 })
+          .avif({ quality: quality, effort: 3 })
           .toBuffer();
 
         // If compressed image is still larger than 1MB, compress further/resize
         if (fileBuffer.length > 1024 * 1024) {
           fileBuffer = await sharp(file.buffer)
-            .resize({ width: 800, height: 800, fit: 'inside', withoutEnlargement: true })
+            .resize({ width: Math.min(targetWidth, 800), height: Math.min(targetHeight, 800), fit: 'inside', withoutEnlargement: true })
             .avif({ quality: 65, effort: 3 })
             .toBuffer();
         }
