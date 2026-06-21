@@ -113,58 +113,27 @@ export const uploadImages = async (req, res) => {
         contentType = 'image/svg+xml';
         extension = 'svg';
       } else {
-        // Convert all other image formats to .avif for maximum compression
+        // Convert all other image formats to .avif for maximum compression while keeping original size (dimensions)
         let sharpInstance = sharp(file.buffer);
-        const metadata = await sharpInstance.metadata();
         const type = req.body.type || 'product';
 
-        let targetWidth = 1200;
-        let targetHeight = 1200;
-        let quality = 75;
-
+        let quality = 80;
         if (type === 'logo') {
-          targetWidth = 240;
-          targetHeight = 120;
           quality = 90;
-        } else if (type === 'favicon') {
-          targetWidth = 128;
-          targetHeight = 128;
+        } else if (type === 'favicon' || type === 'icon') {
           quality = 85;
-        } else if (type === 'icon') {
-          targetWidth = 56;
-          targetHeight = 56;
-          quality = 85;
-        } else if (type === 'category' || type === 'categories') {
-          targetWidth = 186;
-          targetHeight = 186;
-          quality = 80;
         } else if (type === 'banner') {
-          targetWidth = 1600;
-          targetHeight = 1600;
-          quality = 75;
-        } else if (type === 'product') {
-          targetWidth = 323;
-          targetHeight = 425;
           quality = 80;
         }
 
-        if (metadata.width > targetWidth || metadata.height > targetHeight) {
-          sharpInstance = sharpInstance.resize({ 
-            width: targetWidth, 
-            height: targetHeight, 
-            fit: type === 'logo' ? 'inside' : 'cover', 
-            withoutEnlargement: true 
-          });
-        }
         fileBuffer = await sharpInstance
           .avif({ quality: quality, effort: 3 })
           .toBuffer();
 
-        // If compressed image is still larger than 1MB, compress further/resize
-        if (fileBuffer.length > 1024 * 1024) {
+        // If compressed image is still larger than 2MB, compress with slightly lower quality, but still keep original resolution
+        if (fileBuffer.length > 2 * 1024 * 1024) {
           fileBuffer = await sharp(file.buffer)
-            .resize({ width: Math.min(targetWidth, 800), height: Math.min(targetHeight, 800), fit: 'inside', withoutEnlargement: true })
-            .avif({ quality: 65, effort: 3 })
+            .avif({ quality: Math.max(55, quality - 15), effort: 3 })
             .toBuffer();
         }
         contentType = 'image/avif';
