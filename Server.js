@@ -23,6 +23,7 @@ import User from "./models/User.js";
 import policyRoutes from "./routes/policyRoutes.js";
 import Policy from "./models/Policy.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import imageRoutes from "./routes/imageRoutes.js";
 import socialMediaRoutes from "./routes/socialMediaRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import platformPolicyRoutes from "./routes/platformPolicyRoutes.js";
@@ -265,6 +266,7 @@ app.use("/api/store-types", storeTypeRoutes); // Store Types management
 app.use("/api/orders", orderRoutes); // Orders (handles both storefront & admin)
 app.use("/api/policies", policyRoutes); // Store policies (handles both storefront & admin)
 app.use("/api/upload", uploadRoutes); // Media uploads
+app.use("/api/images", imageRoutes); // Image optimization and delivery
 app.use("/api/social-media", socialMediaRoutes); // Social media links
 app.use("/api/categories", categoryRoutes); // Store Categories
 app.use("/api/platform-policies", platformPolicyRoutes); // Global platform policies
