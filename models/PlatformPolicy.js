@@ -4,16 +4,7 @@ const platformPolicySchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: [
-        "privacy",
-        "terms",
-        "refund",
-        "cookies",
-        "acceptable_use",
-        "disclaimer"
-      ],
-      required: true,
-      unique: true
+      required: true
     },
     title: {
       type: String,
