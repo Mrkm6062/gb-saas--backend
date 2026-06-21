@@ -99,19 +99,24 @@ export const loginSuperAdmin = async (req, res) => {
       await user.save();
 
       try {
-        if (process.env.SMTP_USER) {
+        const emailUser = process.env.EMAIL_USER || process.env.SMTP_USER;
+        const emailPass = process.env.EMAIL_PASS || process.env.SMTP_PASS;
+        const smtpHost = process.env.EMAIL_HOST || 'smtp.gmail.com';
+        const smtpPort = process.env.EMAIL_PORT || 587;
+
+        if (emailUser && emailPass) {
           const transporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST || 'smtp.gmail.com',
-            port: process.env.SMTP_PORT || 587,
-            secure: process.env.SMTP_PORT == 465,
+            host: smtpHost,
+            port: Number(smtpPort),
+            secure: Number(smtpPort) === 465,
             auth: {
-              user: process.env.SMTP_USER,
-              pass: process.env.SMTP_PASS
+              user: emailUser,
+              pass: emailPass
             }
           });
           
           await transporter.sendMail({
-            from: `"Galibrand Cloud" <${process.env.SMTP_USER}>`,
+            from: `"Galibrand Cloud" <${emailUser}>`,
             to: email,
             subject: "Admin Login OTP - Galibrand Cloud",
             html: `<div style="font-family: sans-serif; text-align: center; padding: 20px;"><h2>Your Admin Login OTP</h2><p>Your OTP is: <strong style="font-size: 24px; letter-spacing: 2px;">${generatedOtp}</strong></p><p>It is valid for 10 minutes.</p></div>`
