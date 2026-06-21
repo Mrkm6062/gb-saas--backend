@@ -2,7 +2,7 @@ import Store from "../models/Store.js";
 import SuperAdminStaff from "../models/SuperAdminStaff.js";
 import Domain from "../models/Domain.js";
 import AdminPerformance from "../models/AdminPerformance.js";
-import PlatformPolicy from "../models/PlatformPolicy.js";
+import SalaryCommission from "../models/SalaryCommission.js";
 
 // @desc    Get current employee's performance stores list (legacy/assigned stores compat)
 // @route   GET /api/staff-performance/my-stores
@@ -287,22 +287,16 @@ export const generatePayout = async (req, res) => {
       return res.status(404).json({ message: "Employee not found with provided ID." });
     }
 
-    // Create a payout entry inside PlatformPolicy (non-unique type)
-    const payoutDoc = await PlatformPolicy.create({
-      type: `${type}_${employeeId}_${invoiceId}`, // Unique string format for standard type field
-      title: `${type === 'salary' ? 'Salary Invoice' : 'Commission Payout'} - ${employeeId} - ${month}`,
-      content: JSON.stringify({
-        employeeId,
-        employeeName: staff.name,
-        amount: Number(amount),
-        month,
-        type,
-        invoiceId,
-        status: "Paid",
-        paidAt: new Date()
-      }),
-      version: "1.0",
-      isActive: true
+    // Create a payout entry inside SalaryCommission (regrading to PlatformPolicy)
+    const payoutDoc = await SalaryCommission.create({
+      employeeId,
+      employeeName: staff.name,
+      amount: Number(amount),
+      month,
+      type,
+      invoiceId,
+      status: "Paid",
+      paidAt: new Date()
     });
 
     res.json({ message: "Payout invoice generated successfully.", payout: payoutDoc });
@@ -322,27 +316,10 @@ export const getMyPayouts = async (req, res) => {
 
     const employeeId = req.user.EmployeeId;
 
-    // Fetch platform policies starting with salary_ or commission_
-    const rawPayouts = await PlatformPolicy.find({
-      $or: [
-        { type: { $regex: new RegExp(`^salary_${employeeId}_`, 'i') } },
-        { type: { $regex: new RegExp(`^commission_${employeeId}_`, 'i') } }
-      ]
-    }).sort({ createdAt: -1 });
+    // Fetch from SalaryCommission collection
+    const payouts = await SalaryCommission.find({ employeeId }).sort({ createdAt: -1 });
 
-    const formattedPayouts = rawPayouts.map(p => {
-      try {
-        return JSON.parse(p.content);
-      } catch {
-        return {
-          title: p.title,
-          rawContent: p.content,
-          createdAt: p.createdAt
-        };
-      }
-    });
-
-    res.json(formattedPayouts);
+    res.json(payouts);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
