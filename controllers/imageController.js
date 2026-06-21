@@ -17,9 +17,9 @@ export const optimizeImage = async (req, res) => {
     // Clean up double slashes or leading slashes if any
     relativePath = relativePath.replace(/^\/+/, "");
 
-    // Parse requested width (we support 80, 186, 56, 323, 600)
+    // Parse requested width (we support 80, 160, 186, 56, 323, 600)
     let width = parseInt(widthStr, 10);
-    const whitelistedWidths = [80, 186, 56, 323, 600];
+    const whitelistedWidths = [80, 160, 186, 56, 323, 600];
     if (isNaN(width) || !whitelistedWidths.includes(width)) {
       // If width is invalid or not whitelisted, redirect to original public GCS image
       const originalUrl = `https://storage.googleapis.com/${process.env.GCS_BUCKET}/${relativePath}`;
@@ -97,6 +97,11 @@ export const optimizeImage = async (req, res) => {
         if (width === 80) { // Logo
           targetWidth = 80;
           targetHeight = 40;
+          fit = "inside";
+          quality = 85;
+        } else if (width === 160) { // High-DPI Logo
+          targetWidth = 160;
+          targetHeight = 80;
           fit = "inside";
           quality = 85;
         } else if (width === 186) { // Category

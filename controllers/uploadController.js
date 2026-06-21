@@ -123,9 +123,9 @@ export const uploadImages = async (req, res) => {
         let quality = 75;
 
         if (type === 'logo') {
-          targetWidth = 80;
-          targetHeight = 40;
-          quality = 85;
+          targetWidth = 240;
+          targetHeight = 120;
+          quality = 90;
         } else if (type === 'favicon') {
           targetWidth = 128;
           targetHeight = 128;
