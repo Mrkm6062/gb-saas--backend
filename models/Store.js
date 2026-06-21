@@ -39,7 +39,93 @@ const storeSchema = new mongoose.Schema({
   locationAddress: { type: String, default: "" },
   mapLocation: { type: String, default: "" },
   isDeleted: { type: Boolean, default: false },
-  deletedAt: { type: Date }
+  deletedAt: { type: Date },
+  seoSettings: {
+    indexWebsite: {
+      type: Boolean,
+      default: true
+    },
+    generateSitemap: {
+      type: Boolean,
+      default: true
+    },
+    sitemapIncludeProducts: {
+      type: Boolean,
+      default: true
+    },
+    sitemapIncludeCategories: {
+      type: Boolean,
+      default: true
+    },
+    sitemapIncludePages: {
+      type: Boolean,
+      default: true
+    },
+    allowAllBots: {
+      type: Boolean,
+      default: true
+    },
+    allowAiSearch: {
+      type: Boolean,
+      default: true
+    },
+    allowAiInput: {
+      type: Boolean,
+      default: true
+    },
+    allowAiTraining: {
+      type: Boolean,
+      default: false
+    },
+    blockGPTBot: {
+      type: Boolean,
+      default: false
+    },
+    blockClaudeBot: {
+      type: Boolean,
+      default: false
+    },
+    blockGoogleExtended: {
+      type: Boolean,
+      default: false
+    },
+    blockMetaExternalAgent: {
+      type: Boolean,
+      default: false
+    },
+    blockAmazonBot: {
+      type: Boolean,
+      default: false
+    },
+    blockApplebotExtended: {
+      type: Boolean,
+      default: false
+    },
+    metaTitle: {
+      type: String,
+      default: ''
+    },
+    metaDescription: {
+      type: String,
+      default: ''
+    },
+    metaKeywords: {
+      type: [String],
+      default: []
+    },
+    canonicalDomain: {
+      type: String,
+      default: ''
+    },
+    customRobotsContent: {
+      type: String,
+      default: ''
+    },
+    customLlmsContent: {
+      type: String,
+      default: ''
+    }
+  }
 }, {
   timestamps: true
 });

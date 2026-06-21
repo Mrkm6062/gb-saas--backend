@@ -54,6 +54,7 @@ import salaryCommissionRoutes from "./routes/salaryCommissionRoutes.js";
 import Domain from "./models/Domain.js";
 import Product from "./models/Product.js";
 import Category from "./models/Category.js";
+import seoairoute from "./routes/seoairoute.js";
 
 
 dotenv.config();
@@ -286,7 +287,8 @@ app.post("/api/customers/auth/send-otp", sendCustomerOtp); // Customer OTP auth
 app.post("/api/customers/auth/verify-otp", verifyCustomerOtp); // Customer OTP verify
 app.get("/api/customers/auth/orders", getCustomerOrders); // Get Customer orders
 app.use("/api/theme-payments", themePaymentRoutes); // Paid theme purchases
-app.use("/api/platform-payments", platformPaymentRoutes); // Superadmin SaaS Payments
+app.use("/api/platform-payments", platformPaymentRoutes);
+app.use("/api/seo-settings", seoairoute); // Superadmin SaaS Payments
 
 
 // Routes
