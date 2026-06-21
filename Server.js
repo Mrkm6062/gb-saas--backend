@@ -289,18 +289,8 @@ app.use("/api/payment", paymentRoutes);
 
 // 🔥 SERVE REACT FRONTEND (Must be placed AFTER API routes)
 // Standard Vite build outputs to /dist. Change to /build if using CRA.
-app.use(express.static(frontendPath, { 
-  index: false,
-  setHeaders: (res, filePath) => {
-    // Cache hashed static assets (Vite bundles in assets/) aggressively for 1 year
-    if (filePath.includes('/assets/') || filePath.includes('\\assets\\')) {
-      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    } else {
-      // Revalidate other assets like favicon.ico, manifest.json within 1 hour
-      res.setHeader('Cache-Control', 'public, max-age=3600');
-    }
-  }
-}));
+const frontendPath = process.env.STOREFRONT_BUILD_PATH || path.join(__dirname, "../store-frontend/dist");
+app.use(express.static(frontendPath, { index: false }));
 
 app.get("*", async (req, res) => {
   // Handle dynamic robots.txt if it falls through to the wildcard route
