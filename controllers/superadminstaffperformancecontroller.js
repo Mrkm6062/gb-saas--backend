@@ -4,6 +4,54 @@ import Domain from "../models/Domain.js";
 import AdminPerformance from "../models/AdminPerformance.js";
 import PlatformPolicy from "../models/PlatformPolicy.js";
 
+// @desc    Get current employee's performance stores list (legacy/assigned stores compat)
+// @route   GET /api/staff-performance/my-stores
+// @access  Private (Authenticated Staff)
+export const getMyStoresPerformance = async (req, res) => {
+  try {
+    if (!req.user || !req.user.EmployeeId) {
+      return res.status(401).json({ message: "Not authorized. Employee ID not found." });
+    }
+
+    const employeeId = req.user.EmployeeId;
+    
+    // Find all stores created/onboarded by this employee
+    const stores = await Store.find({ empID: employeeId, isDeleted: false })
+      .populate('planId')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const storeDetails = await Promise.all(stores.map(async store => {
+      const customDomainDoc = await Domain.findOne({ storeId: store._id, status: 'connected' });
+      return {
+        _id: store._id,
+        storeId: store.storeId,
+        storeName: store.storeName,
+        subdomain: store.subdomain,
+        customDomain: customDomainDoc ? customDomainDoc.domain : null,
+        status: store.status,
+        subscriptionStatus: store.subscriptionStatus,
+        isTrialActive: store.isTrialActive,
+        planExpiryDate: store.planExpiryDate,
+        plan: store.planId ? {
+          _id: store.planId._id,
+          name: store.planId.name,
+          price: store.planId.price,
+          features: store.planId.features
+        } : {
+          name: "Free",
+          price: 0,
+          features: {}
+        }
+      };
+    }));
+
+    res.json(storeDetails);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Get current employee's performance & commission summary
 // @route   GET /api/staff-performance/details
 // @access  Private (Authenticated Staff)
