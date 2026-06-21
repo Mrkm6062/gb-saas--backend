@@ -116,18 +116,18 @@ export const uploadImages = async (req, res) => {
         // Convert all other image formats to .avif for maximum compression
         let sharpInstance = sharp(file.buffer);
         const metadata = await sharpInstance.metadata();
-        if (metadata.width > 2048 || metadata.height > 2048) {
-          sharpInstance = sharpInstance.resize({ width: 2048, height: 2048, fit: 'inside', withoutEnlargement: true });
+        if (metadata.width > 1200 || metadata.height > 1200) {
+          sharpInstance = sharpInstance.resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true });
         }
         fileBuffer = await sharpInstance
-          .avif({ quality: 80, effort: 3 })
+          .avif({ quality: 75, effort: 3 })
           .toBuffer();
 
         // If compressed image is still larger than 1MB, compress further/resize
         if (fileBuffer.length > 1024 * 1024) {
           fileBuffer = await sharp(file.buffer)
-            .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
-            .avif({ quality: 70, effort: 3 })
+            .resize({ width: 800, height: 800, fit: 'inside', withoutEnlargement: true })
+            .avif({ quality: 65, effort: 3 })
             .toBuffer();
         }
         contentType = 'image/avif';
@@ -142,7 +142,7 @@ export const uploadImages = async (req, res) => {
       await blob.save(fileBuffer, {
         metadata: { 
           contentType: contentType,
-          cacheControl: 'public, max-age=3600'
+          cacheControl: 'public, max-age=31536000, immutable'
         },
         resumable: false,
       });
