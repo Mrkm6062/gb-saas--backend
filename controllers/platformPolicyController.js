@@ -13,7 +13,10 @@ export const getPlatformPolicies = async (req, res) => {
 // GET ACTIVE PUBLIC PLATFORM POLICIES
 export const getPublicPlatformPolicies = async (req, res) => {
   try {
-    const policies = await PlatformPolicy.find({ isActive: true });
+    const policies = await PlatformPolicy.find({ 
+      isActive: true,
+      type: { $regex: '^(?!salary|commission)', $options: 'i' }
+    });
     res.json(policies);
   } catch (error) {
     res.status(500).json({ message: error.message });
