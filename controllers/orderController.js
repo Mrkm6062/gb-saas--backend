@@ -457,6 +457,7 @@ export const updateOrderStatus = async (req, res) => {
     if (ShippingCompany !== undefined) order.ShippingCompany = ShippingCompany;
     if (DeliveryPersonName !== undefined) order.DeliveryPersonName = DeliveryPersonName;
     if (DeliveryPersonPhone !== undefined) order.DeliveryPersonPhone = DeliveryPersonPhone;
+    if (req.body.orderConfirmed !== undefined) order.orderConfirmed = req.body.orderConfirmed;
 
     // Clean up Google Cloud Storage if the order is cancelled
     if (orderStatus === 'canceled' && previousStatus !== 'canceled') {

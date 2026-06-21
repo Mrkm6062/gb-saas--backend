@@ -89,6 +89,10 @@ const orderSchema = new mongoose.Schema(
       type: String,
       default: "placed", // placed / shipped / delivered /returned / cancelled
     },
+    orderConfirmed: {
+      type: Boolean,
+      default: false
+    }
   },
   { timestamps: true }
 );

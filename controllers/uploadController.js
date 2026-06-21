@@ -2,6 +2,7 @@ import { storage } from "../gcs.js";
 import Store from "../models/Store.js";
 import sharp from "sharp";
 import { optimize } from "svgo";
+import fetch from "node-fetch";
 
 const bucket = storage.bucket(process.env.GCS_BUCKET);
 
@@ -190,6 +191,33 @@ export const deleteImage = async (req, res) => {
 
     await bucket.file(filename).delete();
     res.status(200).json({ message: "Image deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// PROXY DOWNLOAD FOR IMAGES (Bypasses CORS restrictions on browser downloads)
+export const proxyDownload = async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url) return res.status(400).json({ message: "URL is required" });
+
+    // Validate that the domain is storage.googleapis.com to prevent SSRF
+    if (!url.includes("storage.googleapis.com")) {
+      return res.status(403).json({ message: "Access forbidden. Only storage.googleapis.com URLs are permitted." });
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Failed to fetch image from storage.");
+
+    const contentType = response.headers.get("content-type") || "application/octet-stream";
+    res.setHeader("Content-Type", contentType);
+    
+    const filename = url.substring(url.lastIndexOf('/') + 1) || 'download.avif';
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    // Stream the image file body directly to the client
+    response.body.pipe(res);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
