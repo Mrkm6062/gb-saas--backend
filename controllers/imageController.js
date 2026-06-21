@@ -17,10 +17,11 @@ export const optimizeImage = async (req, res) => {
     // Clean up double slashes or leading slashes if any
     relativePath = relativePath.replace(/^\/+/, "");
 
-    // Parse requested width (we support 300px and 600px)
+    // Parse requested width (we support 80, 186, 56, 323, 600)
     let width = parseInt(widthStr, 10);
-    if (isNaN(width) || (width !== 300 && width !== 600)) {
-      // If width is invalid or not 300/600, redirect to original public GCS image
+    const whitelistedWidths = [80, 186, 56, 323, 600];
+    if (isNaN(width) || !whitelistedWidths.includes(width)) {
+      // If width is invalid or not whitelisted, redirect to original public GCS image
       const originalUrl = `https://storage.googleapis.com/${process.env.GCS_BUCKET}/${relativePath}`;
       return res.redirect(originalUrl);
     }
@@ -87,14 +88,44 @@ export const optimizeImage = async (req, res) => {
         // Download original image to memory
         const [originalBuffer] = await originalFile.download();
 
+        // Determine target dimensions
+        let targetWidth = width;
+        let targetHeight = width;
+        let fit = "cover";
+        let quality = 80;
+
+        if (width === 80) { // Logo
+          targetWidth = 80;
+          targetHeight = 40;
+          fit = "inside";
+          quality = 85;
+        } else if (width === 186) { // Category
+          targetWidth = 186;
+          targetHeight = 186;
+          quality = 80;
+        } else if (width === 56) { // Icon
+          targetWidth = 56;
+          targetHeight = 56;
+          quality = 85;
+        } else if (width === 323) { // Product Card
+          targetWidth = 323;
+          targetHeight = 425;
+          quality = 80;
+        } else if (width === 600) { // Product Details
+          targetWidth = 600;
+          targetHeight = 789;
+          quality = 80;
+        }
+
         // Perform image resizing and webp conversion using Sharp
         const optimizedBuffer = await sharp(originalBuffer)
           .resize({
-            width: width,
-            fit: "inside",
+            width: targetWidth,
+            height: targetHeight,
+            fit: fit,
             withoutEnlargement: true
           })
-          .webp({ quality: 80 })
+          .webp({ quality: quality })
           .toBuffer();
 
         // Save the optimized version to GCS

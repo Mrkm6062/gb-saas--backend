@@ -123,29 +123,38 @@ export const uploadImages = async (req, res) => {
         let quality = 75;
 
         if (type === 'logo') {
-          targetWidth = 300;
-          targetHeight = 300;
-          quality = 80;
+          targetWidth = 80;
+          targetHeight = 40;
+          quality = 85;
         } else if (type === 'favicon') {
           targetWidth = 128;
           targetHeight = 128;
           quality = 85;
         } else if (type === 'icon') {
-          targetWidth = 128;
-          targetHeight = 128;
+          targetWidth = 56;
+          targetHeight = 56;
+          quality = 85;
+        } else if (type === 'category' || type === 'categories') {
+          targetWidth = 186;
+          targetHeight = 186;
           quality = 80;
         } else if (type === 'banner') {
           targetWidth = 1600;
           targetHeight = 1600;
           quality = 75;
         } else if (type === 'product') {
-          targetWidth = 1000;
-          targetHeight = 1000;
-          quality = 75;
+          targetWidth = 323;
+          targetHeight = 425;
+          quality = 80;
         }
 
         if (metadata.width > targetWidth || metadata.height > targetHeight) {
-          sharpInstance = sharpInstance.resize({ width: targetWidth, height: targetHeight, fit: 'inside', withoutEnlargement: true });
+          sharpInstance = sharpInstance.resize({ 
+            width: targetWidth, 
+            height: targetHeight, 
+            fit: type === 'logo' ? 'inside' : 'cover', 
+            withoutEnlargement: true 
+          });
         }
         fileBuffer = await sharpInstance
           .avif({ quality: quality, effort: 3 })
