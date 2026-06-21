@@ -50,8 +50,8 @@ export const uploadImages = async (req, res) => {
 
     // Validate file sizes and check that all uploaded files are strictly images (both MIME and actual content)
     for (const file of req.files) {
-      if (file.size > 3 * 1024 * 1024) {
-        return res.status(400).json({ message: `File size too large: ${file.originalname}. Maximum allowed size is 3MB.` });
+      if (file.size > 5 * 1024 * 1024) {
+        return res.status(400).json({ message: `File size too large: ${file.originalname}. Maximum allowed size is 5MB.` });
       }
 
       if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('video/')) {
@@ -112,18 +112,24 @@ export const uploadImages = async (req, res) => {
         fileBuffer = Buffer.from(cleanSvg, 'utf-8');
         contentType = 'image/svg+xml';
         extension = 'svg';
-      } else if (originalName.endsWith('.avif') || file.mimetype === 'image/avif') {
-        // Optimize but keep as .avif
-        fileBuffer = await sharp(file.buffer)
-          .avif({ quality: 80, effort: 3 })
-          .toBuffer();
-        contentType = 'image/avif';
-        extension = 'avif';
       } else {
         // Convert all other image formats to .avif for maximum compression
-        fileBuffer = await sharp(file.buffer)
+        let sharpInstance = sharp(file.buffer);
+        const metadata = await sharpInstance.metadata();
+        if (metadata.width > 2048 || metadata.height > 2048) {
+          sharpInstance = sharpInstance.resize({ width: 2048, height: 2048, fit: 'inside', withoutEnlargement: true });
+        }
+        fileBuffer = await sharpInstance
           .avif({ quality: 80, effort: 3 })
           .toBuffer();
+
+        // If compressed image is still larger than 1MB, compress further/resize
+        if (fileBuffer.length > 1024 * 1024) {
+          fileBuffer = await sharp(file.buffer)
+            .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+            .avif({ quality: 70, effort: 3 })
+            .toBuffer();
+        }
         contentType = 'image/avif';
         extension = 'avif';
       }
