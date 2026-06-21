@@ -4,6 +4,7 @@ import generateToken from "../../utils/generateToken.js";
 import Counter from "../../models/Counter.js";
 import SuperAdminStaff from "../../models/SuperAdminStaff.js";
 import nodemailer from "nodemailer";
+import Domain from "../../models/Domain.js";
 
 // REGISTER USER + CREATE STORE
 export const registerUser = async (req, res) => {
@@ -160,9 +161,18 @@ export const getDashboardData = async (req, res) => {
   try {
     // Fetch all normal users (excluding passwords) and all stores
     const users = await User.find({ role: 'user' }).select('-password').sort({ createdAt: -1 });
-    const stores = await Store.find().sort({ createdAt: -1 });
+    const stores = await Store.find().sort({ createdAt: -1 }).lean();
     
-    res.json({ users, stores });
+    // Resolve custom domain for each store
+    const storesWithDomains = await Promise.all(stores.map(async store => {
+      const customDomainDoc = await Domain.findOne({ storeId: store._id, status: 'connected' });
+      return {
+        ...store,
+        customDomain: customDomainDoc ? customDomainDoc.domain : null
+      };
+    }));
+    
+    res.json({ users, stores: storesWithDomains });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

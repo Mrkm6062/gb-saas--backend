@@ -1,5 +1,6 @@
 import Store from "../models/Store.js";
 import SuperAdminStaff from "../models/SuperAdminStaff.js";
+import Domain from "../models/Domain.js";
 
 // @desc    Get current employee's performance (stores list they onboarded)
 // @route   GET /api/staff-performance/my-stores
@@ -15,27 +16,32 @@ export const getMyStoresPerformance = async (req, res) => {
     // Find all stores created/onboarded by this employee
     const stores = await Store.find({ empID: employeeId, isDeleted: false })
       .populate('planId')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    const storeDetails = stores.map(store => ({
-      _id: store._id,
-      storeId: store.storeId,
-      storeName: store.storeName,
-      subdomain: store.subdomain,
-      status: store.status,
-      subscriptionStatus: store.subscriptionStatus,
-      isTrialActive: store.isTrialActive,
-      planExpiryDate: store.planExpiryDate,
-      plan: store.planId ? {
-        _id: store.planId._id,
-        name: store.planId.name,
-        price: store.planId.price,
-        features: store.planId.features
-      } : {
-        name: "Free",
-        price: 0,
-        features: {}
-      }
+    const storeDetails = await Promise.all(stores.map(async store => {
+      const customDomainDoc = await Domain.findOne({ storeId: store._id, status: 'connected' });
+      return {
+        _id: store._id,
+        storeId: store.storeId,
+        storeName: store.storeName,
+        subdomain: store.subdomain,
+        customDomain: customDomainDoc ? customDomainDoc.domain : null,
+        status: store.status,
+        subscriptionStatus: store.subscriptionStatus,
+        isTrialActive: store.isTrialActive,
+        planExpiryDate: store.planExpiryDate,
+        plan: store.planId ? {
+          _id: store.planId._id,
+          name: store.planId.name,
+          price: store.planId.price,
+          features: store.planId.features
+        } : {
+          name: "Free",
+          price: 0,
+          features: {}
+        }
+      };
     }));
 
     res.json(storeDetails);
@@ -65,27 +71,32 @@ export const getStaffPerformanceById = async (req, res) => {
 
     const stores = await Store.find({ empID: staff.EmployeeId, isDeleted: false })
       .populate('planId')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    const storeDetails = stores.map(store => ({
-      _id: store._id,
-      storeId: store.storeId,
-      storeName: store.storeName,
-      subdomain: store.subdomain,
-      status: store.status,
-      subscriptionStatus: store.subscriptionStatus,
-      isTrialActive: store.isTrialActive,
-      planExpiryDate: store.planExpiryDate,
-      plan: store.planId ? {
-        _id: store.planId._id,
-        name: store.planId.name,
-        price: store.planId.price,
-        features: store.planId.features
-      } : {
-        name: "Free",
-        price: 0,
-        features: {}
-      }
+    const storeDetails = await Promise.all(stores.map(async store => {
+      const customDomainDoc = await Domain.findOne({ storeId: store._id, status: 'connected' });
+      return {
+        _id: store._id,
+        storeId: store.storeId,
+        storeName: store.storeName,
+        subdomain: store.subdomain,
+        customDomain: customDomainDoc ? customDomainDoc.domain : null,
+        status: store.status,
+        subscriptionStatus: store.subscriptionStatus,
+        isTrialActive: store.isTrialActive,
+        planExpiryDate: store.planExpiryDate,
+        plan: store.planId ? {
+          _id: store.planId._id,
+          name: store.planId.name,
+          price: store.planId.price,
+          features: store.planId.features
+        } : {
+          name: "Free",
+          price: 0,
+          features: {}
+        }
+      };
     }));
 
     res.json({
