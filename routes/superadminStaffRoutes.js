@@ -1,5 +1,5 @@
 import express from "express";
-import { createEmployee, getEmployees, updateEmployee } from "../controllers/superadminStaffController.js";
+import { createEmployee, getEmployees, updateEmployee, getSelfProfile, updateSelfProfile } from "../controllers/superadminStaffController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -7,6 +7,9 @@ const router = express.Router();
 // Apply basic authentication middleware to ensure req.user exists.
 // Specific role checks (Superadmin, HR, etc.) are handled inside the controllers.
 router.use(protect);
+
+router.get("/me", getSelfProfile);
+router.put("/me", updateSelfProfile);
 
 router.route("/")
   .post(createEmployee)

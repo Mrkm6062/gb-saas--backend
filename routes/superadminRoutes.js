@@ -1,5 +1,5 @@
 import express from "express";
-import { loginSuperAdmin, getDashboardData } from "../superadmin/controllers/authController.js";
+import { loginSuperAdmin, getDashboardData, getMe } from "../superadmin/controllers/authController.js";
 import { getPlans, createOrUpdatePlan, assignPlanToStore } from "../controllers/planController.js";
 import { updateStoreStatus, updateStoreExpiry } from "../controllers/storeController.js";
 import { getPlatformPolicies, createOrUpdatePlatformPolicy, deletePlatformPolicy } from "../controllers/platformPolicyController.js";
@@ -12,6 +12,7 @@ const router = express.Router();
 router.post("/login", loginSuperAdmin);
 
 // Protected Superadmin Routes
+router.get("/me", protectSuperadmin, getMe);
 router.get("/data", protectSuperadmin, getDashboardData); 
 router.get("/plans", protectSuperadmin, getPlans);
 router.post("/plans", protectSuperadmin, createOrUpdatePlan);

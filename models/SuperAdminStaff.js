@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema(
     Suspended: { type: Boolean, default: false },
     name: String,
     email: { type: String, unique: true },
-    CompanyEmail: { type: String, unique: true },
+    CompanyEmail: { type: String, unique: true, sparse: true },
     password: String,
     role: { type: String, enum: ['superadmin', 'Officestaff', 'Sales Associate', 'Sales Executive',  'Sales Manager', 'Marketing Associate', 'Marketing Executive',  'Marketing Manager', 'Finance Associate', 'Finance Executive',  'Finance Manager', 'HR Associate', 'HR Executive', 'HR Manager', 'Operations Associate', 'Operations Executive', 'Operations Manager', 'Customer Service Associate', 'Customer Service Executive', 'Customer Service Manager', 'IT Associate', 'IT Executive', 'IT Manager' ], default: 'staff' },
     phone: String,

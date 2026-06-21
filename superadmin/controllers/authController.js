@@ -162,3 +162,22 @@ export const getDashboardData = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// GET CURRENT LOGGED-IN SUPERADMIN OR STAFF DETAILS
+export const getMe = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Not authorized" });
+    }
+    res.json({
+      _id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      role: req.user.role,
+      isStaff: req.user.EmployeeId !== undefined,
+      employeeDetails: req.user
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

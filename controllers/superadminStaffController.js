@@ -126,3 +126,57 @@ export const getEmployees = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Get current logged-in employee profile
+// @route   GET /api/staff/me
+// @access  Private (Any authenticated employee/staff)
+export const getSelfProfile = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Not authorized." });
+    }
+    res.json(req.user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Update current logged-in employee profile
+// @route   PUT /api/staff/me
+// @access  Private (Any authenticated employee/staff)
+export const updateSelfProfile = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Not authorized." });
+    }
+
+    const employee = await SuperAdminStaff.findById(req.user._id);
+    if (!employee) {
+      return res.status(404).json({ message: "Employee profile not found." });
+    }
+
+    // Fields that employees are allowed to update on their own profiles
+    const selfUpdatableFields = [
+      'name', 'phone', 'Pofileimage', 'Address', 'BankDetails', 'UPI', 'password'
+    ];
+
+    selfUpdatableFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        employee[field] = req.body[field];
+      }
+    });
+
+    const updatedEmployee = await employee.save();
+    
+    // Hide password before returning
+    const returnUser = updatedEmployee.toObject();
+    delete returnUser.password;
+
+    res.json({
+      message: "Profile updated successfully",
+      employee: returnUser
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
