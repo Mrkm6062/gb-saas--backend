@@ -55,6 +55,7 @@ import Domain from "./models/Domain.js";
 import Product from "./models/Product.js";
 import Category from "./models/Category.js";
 import seoairoute from "./routes/seoairoute.js";
+import seoPublicRoutes from "./routes/seoPublicRoutes.js";
 
 
 dotenv.config();
@@ -163,88 +164,8 @@ seedSuperAdmin();
 // 🔥 MULTI-TENANT MIDDLEWARE (GLOBAL FOR BELOW ROUTES)
 app.use(storeResolver);
 
-// Dynamic robots.txt route
-app.get("/robots.txt", async (req, res) => {
-  try {
-    if (!req.store) {
-      res.type("text/plain");
-      return res.send("User-agent: *\nDisallow: /api\nDisallow: /dashboard\nSitemap: https://galibrand.cloud/sitemap.xml");
-    }
-
-    const domainRecord = await Domain.findOne({ storeId: req.store._id, status: "connected" });
-    const storeDomain = domainRecord 
-      ? `https://${domainRecord.domain}` 
-      : `https://${req.store.subdomain || `${req.store.storeSlug}.galibrand.cloud`}`;
-
-    res.type("text/plain");
-    res.send(`User-agent: *\nAllow: /\nDisallow: /track\nDisallow: /cart\nSitemap: ${storeDomain}/sitemap.xml`);
-  } catch (error) {
-    console.error("robots.txt generation error:", error);
-    res.status(500).send("Internal Server Error");
-  }
-});
-
-// Dynamic sitemap.xml route
-app.get("/sitemap.xml", async (req, res) => {
-  try {
-    if (!req.store) {
-      res.type("application/xml");
-      return res.send(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://galibrand.cloud/</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-</urlset>`);
-    }
-
-    const domainRecord = await Domain.findOne({ storeId: req.store._id, status: "connected" });
-    const storeDomain = domainRecord 
-      ? `https://${domainRecord.domain}` 
-      : `https://${req.store.subdomain || `${req.store.storeSlug}.galibrand.cloud`}`;
-
-    const [categories, products] = await Promise.all([
-      Category.find({ store: req.store._id, status: "active" }).select("slug _id"),
-      Product.find({ storeId: req.store._id, isActive: true }).select("slug _id")
-    ]);
-
-    let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-    xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
-
-    xml += `  <url>\n`;
-    xml += `    <loc>${storeDomain}/</loc>\n`;
-    xml += `    <changefreq>daily</changefreq>\n`;
-    xml += `    <priority>1.0</priority>\n`;
-    xml += `  </url>\n`;
-
-    for (const cat of categories) {
-      const catSlug = cat.slug || cat._id.toString();
-      xml += `  <url>\n`;
-      xml += `    <loc>${storeDomain}/category/${catSlug}</loc>\n`;
-      xml += `    <changefreq>weekly</changefreq>\n`;
-      xml += `    <priority>0.8</priority>\n`;
-      xml += `  </url>\n`;
-    }
-
-    for (const prod of products) {
-      const prodSlug = prod.slug || prod._id.toString();
-      xml += `  <url>\n`;
-      xml += `    <loc>${storeDomain}/product/${prodSlug}</loc>\n`;
-      xml += `    <changefreq>weekly</changefreq>\n`;
-      xml += `    <priority>0.7</priority>\n`;
-      xml += `  </url>\n`;
-    }
-
-    xml += `</urlset>`;
-
-    res.type("application/xml");
-    res.send(xml);
-  } catch (error) {
-    console.error("sitemap.xml generation error:", error);
-    res.status(500).send("Internal Server Error");
-  }
-});
+// Dynamic SEO & AI public routes (robots.txt, sitemap.xml, llms.txt)
+app.use("/", seoPublicRoutes);
 
 // Status check for frontend
 app.get("/api/status", (req, res) => {
