@@ -49,6 +49,14 @@ export const getRobotsText = async (req, res) => {
 
     let robotsContent = "";
 
+    export const getRobotsText = async (req, res) => {
+  console.log("ROBOTS ROUTE HIT");
+
+  res.type("text/plain");
+
+  return res.send("TEST ROBOTS");
+};
+
     // 1. General Indexing Policy
     if (seo.indexWebsite === false) {
       robotsContent += "User-agent: *\nDisallow: /\n";
