@@ -113,7 +113,7 @@ export const uploadImages = async (req, res) => {
         contentType = 'image/svg+xml';
         extension = 'svg';
       } else {
-        // Convert all other image formats to .avif for maximum compression while keeping original size (dimensions)
+        // Convert all other image formats to WebP for fast compression while keeping original size (dimensions)
         let sharpInstance = sharp(file.buffer);
         const type = req.body.type || 'product';
 
@@ -127,17 +127,17 @@ export const uploadImages = async (req, res) => {
         }
 
         fileBuffer = await sharpInstance
-          .avif({ quality: quality, effort: 3 })
+          .webp({ quality: quality })
           .toBuffer();
 
         // If compressed image is still larger than 2MB, compress with slightly lower quality, but still keep original resolution
         if (fileBuffer.length > 2 * 1024 * 1024) {
           fileBuffer = await sharp(file.buffer)
-            .avif({ quality: Math.max(55, quality - 15), effort: 3 })
+            .webp({ quality: Math.max(55, quality - 15) })
             .toBuffer();
         }
-        contentType = 'image/avif';
-        extension = 'avif';
+        contentType = 'image/webp';
+        extension = 'webp';
       }
 
       // Ensure the extension matches the new format
