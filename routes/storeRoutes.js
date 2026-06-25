@@ -20,8 +20,8 @@ router.get("/me", protect, getMyStore);
 // --- TENANT-SPECIFIC PUBLIC ROUTES (for storefront widgets/pages) ---
 router.get("/tenant/info", subdomainMiddleware, storeResolver, (req, res) => {
   if (!req.store) return res.status(404).json({ message: "Store not found" });
-  const { _id, storeName, logo, banner, theme, favicon, websiteTitle, metaDescription, subdomain, supportPhoneNumbers, supportEmail, locationAddress, mapLocation } = req.store;
-  res.json({ _id, name: storeName, logo, banner, theme, favicon, websiteTitle, metaDescription, subdomain, supportPhoneNumbers, supportEmail, locationAddress, mapLocation });
+  const { _id, storeName, logo, banner, theme, favicon, websiteTitle, metaDescription, subdomain, supportPhoneNumbers, whatsappNumber, whatsappSupportEnabled, supportEmail, locationAddress, mapLocation } = req.store;
+  res.json({ _id, name: storeName, logo, banner, theme, favicon, websiteTitle, metaDescription, subdomain, supportPhoneNumbers, whatsappNumber, whatsappSupportEnabled, supportEmail, locationAddress, mapLocation });
 });
 
 router.get("/tenant/products", subdomainMiddleware, storeResolver, async (req, res) => {
