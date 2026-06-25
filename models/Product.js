@@ -71,6 +71,7 @@ const productSchema = new mongoose.Schema({
   basePrice: { type: Number },
   discount: { type: Number, default: 0 }, // % discount for promotions
   price: { type: Number }, // Final price after discount (calculated field) price = basePrice - (basePrice * discount / 100)
+  variantType: { type: String, default: "option" },
 
   // 🔹 UNIT TYPE (important for your use case)
   unitType: {

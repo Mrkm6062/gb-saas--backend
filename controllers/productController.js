@@ -8,7 +8,7 @@ export const createProduct = async (req, res) => {
     const { 
       name, storeId, description, category, foodtype, subCategory, Brand, brand, discount,
       images, variants, basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable, allowCustomText, customizableArea,
-      price, stock // Legacy fallbacks
+      price, stock, variantType // Legacy fallbacks
     } = req.body;
 
     if (!req.user || !req.user.userId) {
@@ -71,7 +71,8 @@ export const createProduct = async (req, res) => {
       seo,
       isCustomizable: isCustomizable || false,
       allowCustomText: allowCustomText || false,
-      customizableArea: customizableArea || { x: 25, y: 25, width: 50, height: 50 }
+      customizableArea: customizableArea || { x: 25, y: 25, width: 50, height: 50 },
+      variantType: variantType || "option"
     });
 
     res.status(201).json(product);
@@ -153,7 +154,7 @@ export const updateProduct = async (req, res) => {
     const { 
       name, description, category, foodtype, subCategory, Brand, brand, discount, images, variants, 
       basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable, allowCustomText, customizableArea,
-      price, stock // Legacy fallbacks
+      price, stock, variantType // Legacy fallbacks
     } = req.body;
 
     if (name !== undefined) product.name = name;
@@ -172,6 +173,7 @@ export const updateProduct = async (req, res) => {
     if (isCustomizable !== undefined) product.isCustomizable = isCustomizable;
     if (allowCustomText !== undefined) product.allowCustomText = allowCustomText;
     if (customizableArea !== undefined) product.customizableArea = customizableArea;
+    if (variantType !== undefined) product.variantType = variantType;
 
     if (variants !== undefined) {
       product.variants = variants;
