@@ -35,6 +35,8 @@ const storeSchema = new mongoose.Schema({
     invoiceId: String
   }],
   supportPhoneNumbers: { type: [String], default: [] },
+  whatsappNumber: { type: String, default: "" },
+  whatsappSupportEnabled: { type: Boolean, default: false },
   supportEmail: { type: String, default: "" },
   locationAddress: { type: String, default: "" },
   mapLocation: { type: String, default: "" },
