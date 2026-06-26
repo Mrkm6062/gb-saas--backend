@@ -255,8 +255,12 @@ app.get("*", async (req, res) => {
     
     res.send(html);
   } catch (err) {
-    res.sendFile(path.join(frontendPath, "index.html"));
-  }
+      console.error(err);
+        return res.status(500).json({
+        message: err.message,
+        stack: err.stack
+    });
+     }
 });
 
 // Error fallback
