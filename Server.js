@@ -56,6 +56,7 @@ import Product from "./models/Product.js";
 import Category from "./models/Category.js";
 import seoairoute from "./routes/seoairoute.js";
 import seoPublicRoutes from "./routes/seoPublicRoutes.js";
+import newsletterRoutes from "./routes/newsletterRoutes.js";
 
 
 dotenv.config();
@@ -210,6 +211,7 @@ app.get("/api/customers/auth/orders", getCustomerOrders); // Get Customer orders
 app.use("/api/theme-payments", themePaymentRoutes); // Paid theme purchases
 app.use("/api/platform-payments", platformPaymentRoutes);
 app.use("/api/seo-settings", seoairoute); // Superadmin SaaS Payments
+app.use("/api/newsletter", newsletterRoutes);
 
 
 // Routes
