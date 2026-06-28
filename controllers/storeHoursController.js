@@ -215,6 +215,90 @@ export const updateStoreHours = async (req, res) => {
   }
 };
 
+// Calculate next opening day and time
+export const getNextOpeningTime = (storeHours, localDate, dateStr, tz) => {
+  const daysOfWeek = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  
+  for (let i = 1; i <= 7; i++) {
+    const checkDate = new Date(localDate);
+    checkDate.setDate(checkDate.getDate() + i);
+    
+    // Format checkDate in target timezone
+    try {
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour12: false
+      });
+      const parts = formatter.formatToParts(checkDate);
+      const partVal = (type) => parts.find(p => p.type === type).value;
+      const year = partVal('year');
+      const month = partVal('month');
+      const day = partVal('day');
+      
+      const checkDateStr = `${year}-${month}-${day}`;
+      const tempDate = new Date(`${year}-${month}-${day}T00:00:00`);
+      const checkDayName = daysOfWeek[tempDate.getDay()];
+      
+      // A. Check Temporary Closure
+      if (storeHours.temporaryClosure?.enabled) {
+        const start = storeHours.temporaryClosure.startDate;
+        const end = storeHours.temporaryClosure.endDate;
+        if ((!start || checkDate >= start) && (!end || checkDate <= end)) {
+          continue; // Closed this day
+        }
+      }
+      
+      // B. Check Holiday
+      if (storeHours.holidays && storeHours.holidays.length > 0) {
+        const holidayMatch = storeHours.holidays.find(h => {
+          if (!h.date) return false;
+          const hDateStr = new Date(h.date).toISOString().split('T')[0];
+          return hDateStr === checkDateStr;
+        });
+        if (holidayMatch && holidayMatch.closed) {
+          continue; // Closed this day
+        }
+      }
+      
+      // C. Weekly Schedule
+      if (storeHours.mode === '24x7') {
+        return {
+          day: i === 1 ? "Tomorrow" : checkDayName.charAt(0).toUpperCase() + checkDayName.slice(1),
+          date: `${day}/${month}/${year}`,
+          time: "12:00 AM"
+        };
+      }
+      
+      if (storeHours.mode === 'custom') {
+        const daySched = storeHours.weeklySchedule?.find(s => s.day === checkDayName);
+        if (daySched && daySched.enabled && daySched.slots && daySched.slots.length > 0) {
+          const openTime = daySched.slots[0].open;
+          let formattedTime = openTime;
+          try {
+            const [h, m] = openTime.split(':').map(Number);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const displayHour = h % 12 || 12;
+            formattedTime = `${displayHour}:${String(m).padStart(2, '0')} ${ampm}`;
+          } catch(e) {}
+          
+          return {
+            day: i === 1 ? "Tomorrow" : checkDayName.charAt(0).toUpperCase() + checkDayName.slice(1),
+            date: `${day}/${month}/${year}`,
+            time: formattedTime
+          };
+        }
+      }
+    } catch(err) {
+      console.error(err);
+    }
+  }
+  
+  return null;
+};
+
 // GET PUBLIC STORE STATUS (IsOpen Check)
 export const getPublicStoreStatus = async (req, res) => {
   try {
@@ -224,6 +308,17 @@ export const getPublicStoreStatus = async (req, res) => {
     }
 
     const status = await checkIsStoreOpen(storeId);
+    if (!status.isOpen) {
+      // Fetch details to find when it will open
+      const storeHours = await StoreHours.findOne({ storeId });
+      if (storeHours) {
+        const tz = storeHours.timezone || "Asia/Kolkata";
+        const { date: localDate, dateStr } = getStoreCurrentTime(tz);
+        const nextOpen = getNextOpeningTime(storeHours, localDate, dateStr, tz);
+        status.nextOpen = nextOpen;
+      }
+    }
+
     res.json(status);
   } catch (error) {
     res.status(500).json({ message: error.message });
