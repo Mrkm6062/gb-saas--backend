@@ -13,6 +13,7 @@ import crypto from "crypto";
 import { decrypt } from "../utils/crypto.js";
 import Domain from "../models/Domain.js";
 import { storage } from "../gcs.js";
+import { checkIsStoreOpen } from "./storeHoursController.js";
 
 // Internal Helper function to send order confirmation email asynchronously
 const sendOrderConfirmationEmail = async (order, store) => {
@@ -169,6 +170,14 @@ export const createOrder = async (req, res) => {
     }
 
     const store = req.store;
+
+    // Validate if store is open
+    const storeOpenStatus = await checkIsStoreOpen(store._id);
+    if (!storeOpenStatus.isOpen) {
+      return res.status(400).json({ 
+        message: storeOpenStatus.reason || "We are currently closed and not accepting orders. Please try again during our store hours." 
+      });
+    }
     
     // Validate Delivery Rules Securely on the Backend
     const deliverySettings = await DeliverySettings.findOne({ storeId: store._id });

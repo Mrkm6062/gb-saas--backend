@@ -57,6 +57,7 @@ import Category from "./models/Category.js";
 import seoairoute from "./routes/seoairoute.js";
 import seoPublicRoutes from "./routes/seoPublicRoutes.js";
 import newsletterRoutes from "./routes/newsletterRoutes.js";
+import storeHoursRoutes from "./routes/storeHoursRoutes.js";
 
 
 dotenv.config();
@@ -212,6 +213,7 @@ app.use("/api/theme-payments", themePaymentRoutes); // Paid theme purchases
 app.use("/api/platform-payments", platformPaymentRoutes);
 app.use("/api/seo-settings", seoairoute); // Superadmin SaaS Payments
 app.use("/api/newsletter", newsletterRoutes);
+app.use("/api/store-hours", storeHoursRoutes);
 
 
 // Routes

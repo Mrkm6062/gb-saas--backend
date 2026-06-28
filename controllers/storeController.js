@@ -7,6 +7,7 @@ import Theme from "../models/Theme.js";
 import User from "../models/User.js";
 import SuperAdminStaff from "../models/SuperAdminStaff.js";
 import PlatformSettings from "../models/PlatformSettings.js";
+import StoreHours from "../models/StoreHours.js";
 import nodemailer from "nodemailer";
 
 // Nodemailer transporter for system emails (Welcome & Renewals)
@@ -110,6 +111,27 @@ export const createStore = async (req, res) => {
       trialPlanDays,
       theme: 'default-theme'
     });
+
+    // Create default 24x7 store hours
+    try {
+      const defaultDays = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+      await StoreHours.create({
+        storeId: store._id,
+        mode: "24x7",
+        timezone: "Asia/Kolkata",
+        weeklySchedule: defaultDays.map(day => ({
+          day,
+          enabled: true,
+          slots: [{ open: "00:00", close: "23:59" }]
+        })),
+        holidays: [],
+        specialHours: [],
+        temporaryClosure: { enabled: false, reason: "", startDate: null, endDate: null },
+        displayStoreStatus: true
+      });
+    } catch (err) {
+      console.error("Failed to create default store hours", err);
+    }
 
     // Send Welcome & Trial Details Email
     try {
