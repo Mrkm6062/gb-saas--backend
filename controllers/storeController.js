@@ -289,7 +289,7 @@ export const upgradeStorePlan = async (req, res) => {
 export const getMyStore = async (req, res) => {
   try {
     // Find all stores owned by the user (including soft-deleted for the recycle bin)
-    const stores = await Store.find({ ownerId: req.user.userId }).lean();
+    const stores = await Store.find({ ownerId: req.user.userId }).populate('planId').lean();
     
     const domains = await Domain.find({
       storeId: { $in: stores.map(s => s._id) },
@@ -298,7 +298,14 @@ export const getMyStore = async (req, res) => {
 
     const storesWithDomains = stores.map(store => {
       const customDomain = domains.find(d => d.storeId.toString() === store._id.toString());
-      return { ...store, customDomain: customDomain ? customDomain.domain : null };
+      const planDetails = store.planId && typeof store.planId === 'object' ? store.planId : null;
+      const planIdStr = planDetails ? planDetails._id.toString() : store.planId;
+      return { 
+        ...store, 
+        planId: planIdStr,
+        planDetails,
+        customDomain: customDomain ? customDomain.domain : null 
+      };
     });
 
     // Always return a 200 OK with the stores array, even if empty
