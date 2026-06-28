@@ -197,6 +197,7 @@ export const updateProduct = async (req, res) => {
     }
 
     const calculatedBasePrice = product.basePrice || 0;
+    const calculatedDiscount = product.discount || 0;
     product.price = Math.round(calculatedBasePrice - (calculatedBasePrice * calculatedDiscount / 100));
 
     const updated = await product.save();
