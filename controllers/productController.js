@@ -47,7 +47,7 @@ export const createProduct = async (req, res) => {
     // 5. Determine base price and discount
     const calculatedBasePrice = basePrice !== undefined ? Number(basePrice) : (price !== undefined ? Number(price) : 0);
     const calculatedDiscount = discount !== undefined ? Number(discount) : 0;
-    const finalPrice = calculatedBasePrice - (calculatedBasePrice * calculatedDiscount / 100);
+    const finalPrice = Math.round(calculatedBasePrice - (calculatedBasePrice * calculatedDiscount / 100));
 
     const product = await Product.create({
       storeId,
@@ -197,8 +197,7 @@ export const updateProduct = async (req, res) => {
     }
 
     const calculatedBasePrice = product.basePrice || 0;
-    const calculatedDiscount = product.discount || 0;
-    product.price = calculatedBasePrice - (calculatedBasePrice * calculatedDiscount / 100);
+    product.price = Math.round(calculatedBasePrice - (calculatedBasePrice * calculatedDiscount / 100));
 
     const updated = await product.save();
 
