@@ -109,7 +109,16 @@ const productSchema = new mongoose.Schema({
 
   // 🔹 RATINGS (future use)
   rating: { type: Number, default: 0 },
-  reviewsCount: { type: Number, default: 0 }
+  reviewsCount: { type: Number, default: 0 },
+
+  // 🔹 KEY FEATURES & SPECIFICATIONS
+  keyFeaturesEnabled: { type: Boolean, default: false },
+  specificationsEnabled: { type: Boolean, default: false },
+  keyFeatures: [String],
+  specifications: [{
+    name: String,
+    value: String
+  }]
 
 }, { timestamps: true });
 
