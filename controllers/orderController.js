@@ -171,6 +171,10 @@ export const createOrder = async (req, res) => {
 
     const store = req.store;
 
+    if (store.subscriptionStatus === 'expired') {
+      return res.status(403).json({ message: "We are temporarily closed and not accepting orders because our store subscription has expired." });
+    }
+
     // Validate if store is open
     const storeOpenStatus = await checkIsStoreOpen(store._id);
     if (!storeOpenStatus.isOpen) {
