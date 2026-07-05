@@ -8,7 +8,8 @@ export const createProduct = async (req, res) => {
     const { 
       name, storeId, description, category, foodtype, subCategory, Brand, brand, discount,
       images, variants, basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable, allowCustomText, customizableArea,
-      price, stock, variantType // Legacy fallbacks
+      price, stock, variantType, // Legacy fallbacks
+      keyFeaturesEnabled, specificationsEnabled, keyFeatures, specifications
     } = req.body;
 
     if (!req.user || !req.user.userId) {
@@ -72,7 +73,11 @@ export const createProduct = async (req, res) => {
       isCustomizable: isCustomizable || false,
       allowCustomText: allowCustomText || false,
       customizableArea: customizableArea || { x: 25, y: 25, width: 50, height: 50 },
-      variantType: variantType || "option"
+      variantType: variantType || "option",
+      keyFeaturesEnabled: keyFeaturesEnabled || false,
+      specificationsEnabled: specificationsEnabled || false,
+      keyFeatures: keyFeatures || [],
+      specifications: specifications || []
     });
 
     res.status(201).json(product);
@@ -154,7 +159,8 @@ export const updateProduct = async (req, res) => {
     const { 
       name, description, category, foodtype, subCategory, Brand, brand, discount, images, variants, 
       basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable, allowCustomText, customizableArea,
-      price, stock, variantType // Legacy fallbacks
+      price, stock, variantType, // Legacy fallbacks
+      keyFeaturesEnabled, specificationsEnabled, keyFeatures, specifications
     } = req.body;
 
     if (name !== undefined) product.name = name;
@@ -174,6 +180,10 @@ export const updateProduct = async (req, res) => {
     if (allowCustomText !== undefined) product.allowCustomText = allowCustomText;
     if (customizableArea !== undefined) product.customizableArea = customizableArea;
     if (variantType !== undefined) product.variantType = variantType;
+    if (keyFeaturesEnabled !== undefined) product.keyFeaturesEnabled = keyFeaturesEnabled;
+    if (specificationsEnabled !== undefined) product.specificationsEnabled = specificationsEnabled;
+    if (keyFeatures !== undefined) product.keyFeatures = keyFeatures;
+    if (specifications !== undefined) product.specifications = specifications;
 
     if (variants !== undefined) {
       product.variants = variants;
