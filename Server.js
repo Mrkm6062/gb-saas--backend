@@ -26,6 +26,8 @@ import uploadRoutes from "./routes/uploadRoutes.js";
 import imageRoutes from "./routes/imageRoutes.js";
 import socialMediaRoutes from "./routes/socialMediaRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
+import subCategoryRoutes from "./routes/subCategoryRoutes.js";
+import offerCategoryRoutes from "./routes/offerCategoryRoutes.js";
 import platformPolicyRoutes from "./routes/platformPolicyRoutes.js";
 import platformSocialMediaRoutes from "./routes/platformSocialMediaRoutes.js";
 import domainRoutes from "./routes/domainRoutes.js";
@@ -196,6 +198,8 @@ app.use("/api/upload", uploadRoutes); // Media uploads
 app.use("/api/images", imageRoutes); // Image optimization and delivery
 app.use("/api/social-media", socialMediaRoutes); // Social media links
 app.use("/api/categories", categoryRoutes); // Store Categories
+app.use("/api/subcategories", subCategoryRoutes); // Store Subcategories
+app.use("/api/offercategories", offerCategoryRoutes); // Store Offer Categories
 app.use("/api/platform-policies", platformPolicyRoutes); // Global platform policies
 app.use("/api/platform-social-media", platformSocialMediaRoutes); // Global platform social links
 app.use("/api/domains", domainRoutes); // Custom domain manager

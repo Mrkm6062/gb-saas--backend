@@ -9,7 +9,8 @@ export const createProduct = async (req, res) => {
       name, storeId, description, category, foodtype, subCategory, Brand, brand, discount,
       images, variants, basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable, allowCustomText, customizableArea,
       price, stock, variantType, // Legacy fallbacks
-      keyFeaturesEnabled, specificationsEnabled, keyFeatures, specifications
+      keyFeaturesEnabled, specificationsEnabled, keyFeatures, specifications,
+      subCategories, offerCategories
     } = req.body;
 
     if (!req.user || !req.user.userId) {
@@ -77,7 +78,9 @@ export const createProduct = async (req, res) => {
       keyFeaturesEnabled: keyFeaturesEnabled || false,
       specificationsEnabled: specificationsEnabled || false,
       keyFeatures: keyFeatures || [],
-      specifications: specifications || []
+      specifications: specifications || [],
+      subCategories: subCategories || [],
+      offerCategories: offerCategories || []
     });
 
     res.status(201).json(product);
@@ -109,6 +112,8 @@ export const getProducts = async (req, res) => {
     // Fetch products as plain JavaScript objects (.lean()) so we can mutate them easily
     const products = await Product.find({ storeId })
       .populate({ path: 'category', model: 'Category', select: 'name' })
+      .populate({ path: 'subCategories', model: 'SubCategory' })
+      .populate({ path: 'offerCategories', model: 'OfferCategory' })
       .lean();
 
     // Aggregate approved reviews to calculate average ratings and totals
@@ -160,7 +165,8 @@ export const updateProduct = async (req, res) => {
       name, description, category, foodtype, subCategory, Brand, brand, discount, images, variants, 
       basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable, allowCustomText, customizableArea,
       price, stock, variantType, // Legacy fallbacks
-      keyFeaturesEnabled, specificationsEnabled, keyFeatures, specifications
+      keyFeaturesEnabled, specificationsEnabled, keyFeatures, specifications,
+      subCategories, offerCategories
     } = req.body;
 
     if (name !== undefined) product.name = name;
@@ -184,6 +190,8 @@ export const updateProduct = async (req, res) => {
     if (specificationsEnabled !== undefined) product.specificationsEnabled = specificationsEnabled;
     if (keyFeatures !== undefined) product.keyFeatures = keyFeatures;
     if (specifications !== undefined) product.specifications = specifications;
+    if (subCategories !== undefined) product.subCategories = subCategories;
+    if (offerCategories !== undefined) product.offerCategories = offerCategories;
 
     if (variants !== undefined) {
       product.variants = variants;

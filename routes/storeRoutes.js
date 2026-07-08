@@ -31,6 +31,8 @@ router.get("/tenant/products", subdomainMiddleware, storeResolver, async (req, r
     // Only return active products for the public storefront, using .lean() for fast performance
     const products = await Product.find({ storeId: req.store._id, isActive: true })
       .populate({ path: 'category', model: 'Category', select: 'name' })
+      .populate({ path: 'subCategories', model: 'SubCategory' })
+      .populate({ path: 'offerCategories', model: 'OfferCategory' })
       .lean();
     
     // Aggregate approved reviews to calculate average ratings and totals

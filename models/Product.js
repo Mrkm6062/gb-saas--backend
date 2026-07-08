@@ -41,6 +41,8 @@ const productSchema = new mongoose.Schema({
   category: { type: String },
   foodtype: { type: String }, // "Non-Veg", "Veg", "Vegan", "Gluten-Free"
   subCategory: { type: String },
+  subCategories: [{ type: mongoose.Schema.Types.ObjectId, ref: "SubCategory" }],
+  offerCategories: [{ type: mongoose.Schema.Types.ObjectId, ref: "OfferCategory" }],
 
 
   // 🔹 STORE (multi-tenant)
