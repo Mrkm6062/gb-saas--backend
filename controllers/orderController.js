@@ -171,7 +171,10 @@ export const createOrder = async (req, res) => {
 
     const store = req.store;
 
-    if (store.subscriptionStatus === 'expired') {
+    const isPlanExpired = store.subscriptionStatus === 'expired' || 
+                          (store.planExpiryDate && new Date() > new Date(store.planExpiryDate));
+
+    if (isPlanExpired) {
       return res.status(403).json({ message: "We are temporarily closed and not accepting orders because our store subscription has expired." });
     }
 
