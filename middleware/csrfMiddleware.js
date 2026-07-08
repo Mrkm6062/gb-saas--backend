@@ -17,6 +17,14 @@ export const csrfProtection = (req, res, next) => {
   }
 
   req.cookies = parseCookies(req.headers.cookie);
+  const accessToken = req.cookies.accessToken;
+
+  // If there is no accessToken cookie, this is a storefront/public API or Superadmin using Bearer token headers.
+  // Since headers-based authentication and public routes are immune to CSRF, we skip the check.
+  if (!accessToken) {
+    return next();
+  }
+
   const cookieCsrfToken = req.cookies.csrfToken;
   const headerCsrfToken = req.headers["x-csrf-token"];
 
