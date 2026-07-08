@@ -155,6 +155,12 @@ const sendOrderConfirmationEmail = async (order, store) => {
         .replace(/{{discountRows}}/g, discountRowsHtml)
         .replace(/{{paymentMethod}}/g, resolvedPaymentMethod)
         .replace(/{{orderStatus}}/g, resolvedOrderStatus)
+        .replace(/{{trackingDetails}}/g, '')
+        .replace(/{{ShippingMethod}}/g, order.ShippingMethod || 'N/A')
+        .replace(/{{ShippingTrackingNumber}}/g, order.ShippingTrackingNumber || 'N/A')
+        .replace(/{{ShippingCompany}}/g, order.ShippingCompany || 'N/A')
+        .replace(/{{DeliveryPersonName}}/g, order.DeliveryPersonName || 'N/A')
+        .replace(/{{DeliveryPersonPhone}}/g, order.DeliveryPersonPhone || 'N/A')
         .replace(/{{shippingCharge}}/g, order.shippingCharge || 0)
         .replace(/{{reviewLinks}}/g, reviewLinksHtml);
     } else {
