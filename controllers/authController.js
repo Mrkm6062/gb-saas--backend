@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import Store from "../models/Store.js";
 import generateToken from "../utils/generateToken.js";
+import crypto from "crypto";
 import Counter from "../models/Counter.js";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
@@ -103,11 +104,18 @@ export const verifyOtp = async (req, res) => {
     // Burn OTP immediately on any attempt to prevent brute-forcing
     user.otp = undefined;
     user.otpExpiry = undefined;
-    await user.save();
 
     if (!isValidOtp || isExpired) {
+      await user.save();
       return res.status(400).json({ message: "Invalid or expired OTP. Please request a new one." });
     }
+
+    // Generate secure session ID
+    const sessionId = crypto.randomUUID();
+    user.sessionId = sessionId;
+    user.sessionCreatedAt = new Date();
+    user.lastLogin = new Date();
+    await user.save();
 
     const stores = await Store.find({ ownerId: user.userId });
 
@@ -117,8 +125,23 @@ export const verifyOtp = async (req, res) => {
       name: user.name,
       email: user.email,
       user: { stores },
-      token: generateToken(user._id),
+      token: generateToken(user),
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// LOGOUT (Invalidate session)
+export const logout = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (user) {
+      user.sessionId = null;
+      user.sessionCreatedAt = null;
+      await user.save();
+    }
+    res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -3,6 +3,7 @@ import User from "../models/User.js";
 import Store from "../models/Store.js";
 import Counter from "../models/Counter.js";
 import generateToken from "../utils/generateToken.js";
+import crypto from "crypto";
 
 // Initialize OAuth2 client
 const client = new OAuth2Client();
@@ -92,6 +93,13 @@ export const googleAuth = async (req, res) => {
       });
     }
 
+    // Generate secure session ID
+    const sessionId = crypto.randomUUID();
+    user.sessionId = sessionId;
+    user.sessionCreatedAt = new Date();
+    user.lastLogin = new Date();
+    await user.save();
+
     // Fetch associated stores
     const stores = await Store.find({ ownerId: user.userId });
 
@@ -102,7 +110,7 @@ export const googleAuth = async (req, res) => {
       email: user.email,
       avatar: user.avatar || "",
       user: { stores },
-      token: generateToken(user._id),
+      token: generateToken(user),
     });
 
   } catch (error) {

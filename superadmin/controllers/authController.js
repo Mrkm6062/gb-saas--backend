@@ -1,6 +1,7 @@
 import User from "../../models/User.js";
 import Store from "../../models/Store.js";
 import generateToken from "../../utils/generateToken.js";
+import crypto from "crypto";
 import Counter from "../../models/Counter.js";
 import SuperAdminStaff from "../../models/SuperAdminStaff.js";
 import nodemailer from "nodemailer";
@@ -35,13 +36,20 @@ export const registerUser = async (req, res) => {
     // Create user
     const user = await User.create({ userId, name, email: normalizedEmail, password });
 
+    // Generate secure session ID
+    const sessionId = crypto.randomUUID();
+    user.sessionId = sessionId;
+    user.sessionCreatedAt = new Date();
+    user.lastLogin = new Date();
+    await user.save();
+
     res.status(201).json({
       _id: user._id,
       userId: user.userId,
       name: user.name,
       email: user.email,
       user: { stores: [] }, // Return empty stores array for dashboard
-      token: generateToken(user._id),
+      token: generateToken(user),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -68,13 +76,20 @@ export const loginSuperAdmin = async (req, res) => {
       }
       
       if (await user.matchPassword(password)) {
+        // Generate secure session ID
+        const sessionId = crypto.randomUUID();
+        user.sessionId = sessionId;
+        user.sessionCreatedAt = new Date();
+        user.lastLogin = new Date();
+        await user.save();
+
         return res.json({
           _id: user._id,
           userId: user.userId,
           name: user.name,
           email: user.email,
           role: user.role,
-          token: generateToken(user._id),
+          token: generateToken(user),
         });
       } else {
         return res.status(401).json({ message: "Invalid email or password" });
