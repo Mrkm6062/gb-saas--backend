@@ -60,6 +60,7 @@ import seoairoute from "./routes/seoairoute.js";
 import seoPublicRoutes from "./routes/seoPublicRoutes.js";
 import newsletterRoutes from "./routes/newsletterRoutes.js";
 import storeHoursRoutes from "./routes/storeHoursRoutes.js";
+import profileRoutes from "./routes/profileRoutes.js";
 
 
 dotenv.config();
@@ -218,6 +219,7 @@ app.use("/api/platform-payments", platformPaymentRoutes);
 app.use("/api/seo-settings", seoairoute); // Superadmin SaaS Payments
 app.use("/api/newsletter", newsletterRoutes);
 app.use("/api/store-hours", storeHoursRoutes);
+app.use("/api/profile", profileRoutes);
 
 
 // Routes
