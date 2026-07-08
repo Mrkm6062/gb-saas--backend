@@ -26,6 +26,10 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null
     },
+    refreshToken: {
+      type: String,
+      default: null
+    },
   },
   { timestamps: true }
 );
@@ -36,6 +40,7 @@ userSchema.pre("save", async function (next) {
     this.password = await bcrypt.hash(this.password, salt);
     this.sessionId = crypto.randomUUID();
     this.sessionCreatedAt = new Date();
+    this.refreshToken = null;
   }
   next();
 });

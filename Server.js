@@ -62,6 +62,7 @@ import newsletterRoutes from "./routes/newsletterRoutes.js";
 import storeHoursRoutes from "./routes/storeHoursRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import googleAuthRoutes from "./routes/googleAuthRoutes.js";
+import { csrfProtection } from "./middleware/csrfMiddleware.js";
 
 
 dotenv.config();
@@ -146,6 +147,8 @@ app.use((req, res, next) => {
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   next();
 });
+
+app.use(csrfProtection);
 
 // Seed Superadmin Account
 const seedSuperAdmin = async () => {

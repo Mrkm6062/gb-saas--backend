@@ -1,6 +1,10 @@
 import User from "../models/User.js";
 import Store from "../models/Store.js";
 import generateToken from "../utils/generateToken.js";
+import generateAccessToken from "../utils/generateAccessToken.js";
+import generateRefreshToken from "../utils/generateRefreshToken.js";
+import { parseCookies } from "../utils/cookieHelper.js";
+import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import Counter from "../models/Counter.js";
 import nodemailer from "nodemailer";
@@ -115,17 +119,47 @@ export const verifyOtp = async (req, res) => {
     user.sessionId = sessionId;
     user.sessionCreatedAt = new Date();
     user.lastLogin = new Date();
+
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    user.refreshToken = refreshToken;
     await user.save();
 
     const stores = await Store.find({ ownerId: user.userId });
 
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      maxAge: 15 * 60 * 1000,
+      path: "/"
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      maxAge: 24 * 60 * 60 * 1000,
+      path: "/"
+    });
+
+    const csrfToken = crypto.randomUUID();
+    res.cookie("csrfToken", csrfToken, {
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      path: "/"
+    });
+
     res.json({
-      _id: user._id,
-      userId: user.userId,
-      name: user.name,
-      email: user.email,
-      user: { stores },
-      token: generateToken(user),
+      success: true,
+      user: {
+        _id: user._id,
+        userId: user.userId,
+        name: user.name,
+        email: user.email,
+        stores
+      }
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -135,14 +169,69 @@ export const verifyOtp = async (req, res) => {
 // LOGOUT (Invalidate session)
 export const logout = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
-    if (user) {
-      user.sessionId = null;
-      user.sessionCreatedAt = null;
-      await user.save();
+    if (req.user) {
+      const user = await User.findById(req.user._id);
+      if (user) {
+        user.sessionId = null;
+        user.sessionCreatedAt = null;
+        user.refreshToken = null;
+        await user.save();
+      }
     }
+    
+    res.clearCookie("accessToken", { path: "/" });
+    res.clearCookie("refreshToken", { path: "/" });
+    res.clearCookie("csrfToken", { path: "/" });
+    
     res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// REFRESH ACCESS TOKEN
+export const refreshAccessToken = async (req, res) => {
+  try {
+    req.cookies = parseCookies(req.headers.cookie);
+    const token = req.cookies.refreshToken;
+
+    if (!token) {
+      return res.status(401).json({ message: "Refresh token not provided." });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+      issuer: "galibrand",
+      audience: "store-owner-dashboard",
+      algorithms: ["HS256"]
+    });
+
+    const user = await User.findById(decoded.sub);
+    if (!user) {
+      return res.status(401).json({ message: "Store Owner not found." });
+    }
+
+    if (user.refreshToken !== token) {
+      return res.status(401).json({ message: "Invalid refresh token." });
+    }
+
+    if (decoded.sessionId !== user.sessionId) {
+      return res.status(401).json({ message: "Session expired. Please login again." });
+    }
+
+    // Generate new Access Token
+    const accessToken = generateAccessToken(user);
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      maxAge: 15 * 60 * 1000,
+      path: "/"
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    return res.status(401).json({ message: "Not authorized, token failed" });
   }
 };

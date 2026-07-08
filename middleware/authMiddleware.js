@@ -1,14 +1,14 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import SuperAdminStaff from "../models/SuperAdminStaff.js";
+import { parseCookies } from "../utils/cookieHelper.js";
 
 const protect = async (req, res, next) => {
-  let token;
+  req.cookies = parseCookies(req.headers.cookie);
+  const token = req.cookies.accessToken;
 
-  if (req.headers.authorization?.startsWith("Bearer")) {
+  if (token) {
     try {
-      token = req.headers.authorization.split(" ")[1];
-
       // Verify JWT with claims
       const decoded = jwt.verify(token, process.env.JWT_SECRET, {
         issuer: "galibrand",
@@ -54,9 +54,7 @@ const protect = async (req, res, next) => {
     }
   }
 
-  if (!token) {
-    return res.status(401).json({ message: "Not authorized, no token provided" });
-  }
+  return res.status(401).json({ message: "Not authorized, no token provided" });
 };
 
 export { protect };

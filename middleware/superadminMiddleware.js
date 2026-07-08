@@ -1,14 +1,18 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import SuperAdminStaff from "../models/SuperAdminStaff.js";
+import { parseCookies } from "../utils/cookieHelper.js";
 
 export const protectSuperadmin = async (req, res, next) => {
-  let token;
+  req.cookies = parseCookies(req.headers.cookie);
+  let token = req.cookies.accessToken;
 
-  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+  if (!token && req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+    token = req.headers.authorization.split(" ")[1];
+  }
+
+  if (token) {
     try {
-      token = req.headers.authorization.split(" ")[1];
-      
       const decoded = jwt.verify(token, process.env.JWT_SECRET, {
         issuer: "galibrand",
         audience: "store-owner-dashboard",

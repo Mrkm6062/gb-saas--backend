@@ -3,6 +3,8 @@ import User from "../models/User.js";
 import Store from "../models/Store.js";
 import Counter from "../models/Counter.js";
 import generateToken from "../utils/generateToken.js";
+import generateAccessToken from "../utils/generateAccessToken.js";
+import generateRefreshToken from "../utils/generateRefreshToken.js";
 import crypto from "crypto";
 
 // Initialize OAuth2 client
@@ -98,19 +100,49 @@ export const googleAuth = async (req, res) => {
     user.sessionId = sessionId;
     user.sessionCreatedAt = new Date();
     user.lastLogin = new Date();
+
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    user.refreshToken = refreshToken;
     await user.save();
 
     // Fetch associated stores
     const stores = await Store.find({ ownerId: user.userId });
 
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      maxAge: 15 * 60 * 1000,
+      path: "/"
+    });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      maxAge: 24 * 60 * 60 * 1000,
+      path: "/"
+    });
+
+    const csrfToken = crypto.randomUUID();
+    res.cookie("csrfToken", csrfToken, {
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+      path: "/"
+    });
+
     res.json({
-      _id: user._id,
-      userId: user.userId,
-      name: user.name,
-      email: user.email,
-      avatar: user.avatar || "",
-      user: { stores },
-      token: generateToken(user),
+      success: true,
+      user: {
+        _id: user._id,
+        userId: user.userId,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar || "",
+        stores
+      }
     });
 
   } catch (error) {
