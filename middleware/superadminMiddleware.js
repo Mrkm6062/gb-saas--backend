@@ -8,14 +8,21 @@ export const protectSuperadmin = async (req, res, next) => {
   if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
     try {
       token = req.headers.authorization.split(" ")[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
-      let user = await User.findById(decoded.id).select("-password");
+      const decoded = jwt.verify(token, process.env.JWT_SECRET, {
+        issuer: "galibrand",
+        audience: "store-owner-dashboard",
+        algorithms: ["HS256"]
+      });
+      
+      const userId = decoded.sub || decoded.id;
+
+      let user = await User.findById(userId).select("-password");
       let isStaff = false;
 
       // Fallback to check if the token belongs to an internal staff member
       if (!user) {
-        user = await SuperAdminStaff.findById(decoded.id).select("-password");
+        user = await SuperAdminStaff.findById(userId).select("-password");
         if (user) isStaff = true;
       }
 
@@ -33,9 +40,19 @@ export const protectSuperadmin = async (req, res, next) => {
         return res.status(403).json({ message: "Your account has been suspended. Please contact the administrator." });
       }
 
+      // VAPT: Validate session ID for Superadmin
+      if (!isStaff && user.role === 'superadmin') {
+        if (!decoded.sessionId || decoded.sessionId !== user.sessionId) {
+          return res.status(401).json({ message: "Session expired. Please login again." });
+        }
+      }
+
       req.user = user;
       next();
     } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({ message: "Session expired. Please login again." });
+      }
       res.status(401).json({ message: "Not authorized, token failed" });
     }
   } else {
