@@ -119,6 +119,26 @@ const sendOrderConfirmationEmail = async (order, store) => {
     
     const template = config.templates?.find(t => t.eventType === 'order_placed' && t.isActive);
 
+    const resolvedPaymentMethod = (order.paymentMethod === 'whatsapp' || order.WhasAppOrder) ? 'WhatsApp' : order.paymentMethod === 'razorpay' ? 'Online' : 'COD';
+    const resolvedOrderStatus = order.orderStatus ? order.orderStatus.toUpperCase() : "";
+
+    let discountRowsHtml = '';
+    if (order.discountDetails && order.discountDetails.length > 0) {
+      discountRowsHtml = order.discountDetails.map(detail => `
+        <tr>
+          <td style="padding: 5px 10px; text-align: left;"><strong>${detail.name}:</strong></td>
+          <td style="padding: 5px 10px; text-align: right;">-₹${detail.amount}</td>
+        </tr>
+      `).join('');
+    } else {
+      discountRowsHtml = `
+        <tr>
+          <td style="padding: 5px 10px; text-align: left;"><strong>Discount:</strong></td>
+          <td style="padding: 5px 10px; text-align: right;">-₹${order.discountAmount || 0}</td>
+        </tr>
+      `;
+    }
+
     if (template) {
       subject = template.subject
         .replace(/{{storeName}}/g, store.storeName)
@@ -132,6 +152,9 @@ const sendOrderConfirmationEmail = async (order, store) => {
         .replace(/{{orderItems}}/g, `<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">${itemsHtml}</table>`)
         .replace(/{{totalAmount}}/g, order.totalAmount)
         .replace(/{{discountAmount}}/g, order.discountAmount || 0)
+        .replace(/{{discountRows}}/g, discountRowsHtml)
+        .replace(/{{paymentMethod}}/g, resolvedPaymentMethod)
+        .replace(/{{orderStatus}}/g, resolvedOrderStatus)
         .replace(/{{shippingCharge}}/g, order.shippingCharge || 0)
         .replace(/{{reviewLinks}}/g, reviewLinksHtml);
     } else {
@@ -201,6 +224,26 @@ const sendStatusUpdateEmail = async (order, store, status) => {
       trackingDetailsHtml += `</div>`;
     }
 
+    const resolvedPaymentMethod = (order.paymentMethod === 'whatsapp' || order.WhasAppOrder) ? 'WhatsApp' : order.paymentMethod === 'razorpay' ? 'Online' : 'COD';
+    const resolvedOrderStatus = order.orderStatus ? order.orderStatus.toUpperCase() : "";
+
+    let discountRowsHtml = '';
+    if (order.discountDetails && order.discountDetails.length > 0) {
+      discountRowsHtml = order.discountDetails.map(detail => `
+        <tr>
+          <td style="padding: 5px 10px; text-align: left;"><strong>${detail.name}:</strong></td>
+          <td style="padding: 5px 10px; text-align: right;">-₹${detail.amount}</td>
+        </tr>
+      `).join('');
+    } else {
+      discountRowsHtml = `
+        <tr>
+          <td style="padding: 5px 10px; text-align: left;"><strong>Discount:</strong></td>
+          <td style="padding: 5px 10px; text-align: right;">-₹${order.discountAmount || 0}</td>
+        </tr>
+      `;
+    }
+
     const subject = template.subject.replace(/{{storeName}}/g, store.storeName).replace(/{{customerName}}/g, order.customerName).replace(/{{orderId}}/g, order._id.toString().slice(-6).toUpperCase());
     const html = template.body
       .replace(/{{storeName}}/g, store.storeName)
@@ -209,6 +252,9 @@ const sendStatusUpdateEmail = async (order, store, status) => {
       .replace(/{{orderItems}}/g, `<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">${itemsHtml}</table>`)
       .replace(/{{totalAmount}}/g, order.totalAmount)
       .replace(/{{discountAmount}}/g, order.discountAmount || 0)
+      .replace(/{{discountRows}}/g, discountRowsHtml)
+      .replace(/{{paymentMethod}}/g, resolvedPaymentMethod)
+      .replace(/{{orderStatus}}/g, resolvedOrderStatus)
       .replace(/{{shippingCharge}}/g, order.shippingCharge || 0)
       .replace(/{{reviewLinks}}/g, reviewLinksHtml)
       .replace(/{{trackingDetails}}/g, trackingDetailsHtml)
