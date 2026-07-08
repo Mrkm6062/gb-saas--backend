@@ -10,6 +10,9 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ['user', 'superadmin'], default: 'user' },
     otp: String,
     otpExpiry: Date,
+    googleId: String,
+    avatar: String,
+    provider: { type: String, default: "email" },
   },
   { timestamps: true }
 );
