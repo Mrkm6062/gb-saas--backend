@@ -17,6 +17,7 @@ import { checkIsStoreOpen } from "./storeHoursController.js";
 
 const calculateOfferDiscount = (orderItems, productsInDb) => {
   let totalB1G1Discount = 0;
+  const details = [];
   
   const productMap = {};
   productsInDb.forEach(p => { productMap[p._id.toString()] = p; });
@@ -42,6 +43,7 @@ const calculateOfferDiscount = (orderItems, productsInDb) => {
       if (!offerGroupItems[offerId]) {
         offerGroupItems[offerId] = {
           offerType: bestOffer.offerType,
+          name: bestOffer.name,
           prices: []
         };
       }
@@ -58,24 +60,34 @@ const calculateOfferDiscount = (orderItems, productsInDb) => {
     group.prices.sort((a, b) => b - a);
     
     const count = group.prices.length;
+    let discount = 0;
     if (group.offerType === 'B1G1') {
       const freeCount = Math.floor(count / 2);
       if (freeCount > 0) {
         const cheapestItems = group.prices.slice(-freeCount);
-        const discount = cheapestItems.reduce((sum, p) => sum + p, 0);
-        totalB1G1Discount += discount;
+        discount = cheapestItems.reduce((sum, p) => sum + p, 0);
       }
     } else if (group.offerType === 'B2G1') {
       const freeCount = Math.floor(count / 3);
       if (freeCount > 0) {
         const cheapestItems = group.prices.slice(-freeCount);
-        const discount = cheapestItems.reduce((sum, p) => sum + p, 0);
-        totalB1G1Discount += discount;
+        discount = cheapestItems.reduce((sum, p) => sum + p, 0);
       }
+    }
+    if (discount > 0) {
+      totalB1G1Discount += discount;
+      details.push({
+        name: `Offer: ${group.name || group.offerType}`,
+        amount: discount,
+        type: "offer"
+      });
     }
   }
   
-  return totalB1G1Discount;
+  return {
+    amount: totalB1G1Discount,
+    details
+  };
 };
 
 // Internal Helper function to send order confirmation email asynchronously
@@ -267,11 +279,21 @@ export const createOrder = async (req, res) => {
 
     const productIds = orderItems.map(item => item.product);
     const productsInDb = await Product.find({ _id: { $in: productIds } }).populate('offerCategories');
-    const offerDiscount = calculateOfferDiscount(orderItems, productsInDb);
+    const offerDiscountResult = calculateOfferDiscount(orderItems, productsInDb);
+    const offerDiscount = offerDiscountResult.amount;
 
     const calculatedDiscountAmount = (Number(discountAmount) || 0) + offerDiscount;
     const rawSubtotal = orderItems.reduce((sum, item) => sum + (Number(item.price) * Number(item.qty)), 0);
     const calculatedTotalAmount = Math.max(0, rawSubtotal - calculatedDiscountAmount + (Number(shippingCharge) || 0));
+
+    const discountDetails = [...offerDiscountResult.details];
+    if (couponCode && (Number(discountAmount) || 0) > 0) {
+      discountDetails.push({
+        name: `Coupon: ${couponCode}`,
+        amount: Number(discountAmount),
+        type: "coupon"
+      });
+    }
 
     const order = await Order.create({
       store: store._id,
@@ -284,6 +306,7 @@ export const createOrder = async (req, res) => {
       couponCode,
       discountAmount: calculatedDiscountAmount,
       discountType: discountType || "",
+      discountDetails,
       shippingCharge,
       paymentMethod: paymentMethod || 'cod',
       WhasAppOrder: paymentMethod === 'whatsapp',
