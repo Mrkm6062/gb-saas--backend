@@ -516,6 +516,31 @@ export const getOrders = async (req, res) => {
 };
 
 // ✅ UPDATE ORDER STATUS
+const adjustOrderStock = async (order, shouldRestore) => {
+  const increment = shouldRestore ? 1 : -1;
+  
+  for (const item of order.orderItems) {
+    if (!item.product) continue;
+    
+    if (item.variantId) {
+      await Product.updateOne(
+        { _id: item.product, "variants._id": item.variantId },
+        {
+          $inc: {
+            "variants.$.stock": item.qty * increment,
+            totalStock: item.qty * increment
+          }
+        }
+      );
+    } else {
+      await Product.updateOne(
+        { _id: item.product },
+        { $inc: { totalStock: item.qty * increment } }
+      );
+    }
+  }
+};
+
 export const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -565,6 +590,18 @@ export const updateOrderStatus = async (req, res) => {
             }
           }
         }
+      }
+    }
+
+    // Inventory stock adjustments on status transitions
+    const isPreviousRestored = ['canceled', 'returned'].includes(previousStatus);
+    const isNewRestored = ['canceled', 'returned'].includes(orderStatus);
+
+    if (orderStatus && previousStatus !== orderStatus) {
+      if (!isPreviousRestored && isNewRestored) {
+        await adjustOrderStock(order, true);
+      } else if (isPreviousRestored && !isNewRestored) {
+        await adjustOrderStock(order, false);
       }
     }
 
