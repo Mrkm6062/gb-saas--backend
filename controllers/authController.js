@@ -128,12 +128,17 @@ export const verifyOtp = async (req, res) => {
 
     const stores = await Store.find({ ownerId: user.userId });
 
+    const host = req.headers.host || "";
+    const isProductionDomain = host.includes("galibrand.cloud");
+    const domainOption = isProductionDomain ? { domain: ".galibrand.cloud" } : {};
+
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "Lax",
       maxAge: 15 * 60 * 1000,
-      path: "/"
+      path: "/",
+      ...domainOption
     });
 
     res.cookie("refreshToken", refreshToken, {
@@ -141,14 +146,16 @@ export const verifyOtp = async (req, res) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "Lax",
       maxAge: 24 * 60 * 60 * 1000,
-      path: "/"
+      path: "/",
+      ...domainOption
     });
 
     const csrfToken = crypto.randomUUID();
     res.cookie("csrfToken", csrfToken, {
       secure: process.env.NODE_ENV === "production",
       sameSite: "Lax",
-      path: "/"
+      path: "/",
+      ...domainOption
     });
 
     res.json({
@@ -222,12 +229,17 @@ export const refreshAccessToken = async (req, res) => {
     // Generate new Access Token
     const accessToken = generateAccessToken(user);
 
+    const host = req.headers.host || "";
+    const isProductionDomain = host.includes("galibrand.cloud");
+    const domainOption = isProductionDomain ? { domain: ".galibrand.cloud" } : {};
+
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "Lax",
       maxAge: 15 * 60 * 1000,
-      path: "/"
+      path: "/",
+      ...domainOption
     });
 
     res.json({ success: true });
