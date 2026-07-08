@@ -236,7 +236,6 @@ export const createOrder = async (req, res) => {
       totalAmount,
       couponCode,
       discountAmount,
-      discountType,
       shippingCharge,
       paymentMethod
     } = req.body;
@@ -305,7 +304,6 @@ export const createOrder = async (req, res) => {
       totalAmount: calculatedTotalAmount,
       couponCode,
       discountAmount: calculatedDiscountAmount,
-      discountType: discountType || "",
       discountDetails,
       shippingCharge,
       paymentMethod: paymentMethod || 'cod',

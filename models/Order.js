@@ -39,7 +39,6 @@ const orderSchema = new mongoose.Schema(
     totalAmount: Number,
     couponCode: String,
     discountAmount: { type: Number, default: 0 },
-    discountType: { type: String, default: "" },
     discountDetails: [
       {
         name: String,
