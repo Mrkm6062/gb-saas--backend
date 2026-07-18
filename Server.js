@@ -63,6 +63,9 @@ import storeHoursRoutes from "./routes/storeHoursRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import googleAuthRoutes from "./routes/googleAuthRoutes.js";
 import { csrfProtection } from "./middleware/csrfMiddleware.js";
+import customPageRoutes from "./routes/customPageRoutes.js";
+import customMenuRoutes from "./routes/customMenuRoutes.js";
+import customAssetRoutes from "./routes/customAssetRoutes.js";
 
 
 dotenv.config();
@@ -225,6 +228,9 @@ app.use("/api/newsletter", newsletterRoutes);
 app.use("/api/store-hours", storeHoursRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/store-owner/auth/google", googleAuthRoutes);
+app.use("/api/custom-pages", customPageRoutes);
+app.use("/api/custom-menus", customMenuRoutes);
+app.use("/api/custom-assets", customAssetRoutes);
 
 
 // Routes
