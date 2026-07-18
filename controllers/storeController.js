@@ -9,6 +9,7 @@ import SuperAdminStaff from "../models/SuperAdminStaff.js";
 import PlatformSettings from "../models/PlatformSettings.js";
 import StoreHours from "../models/StoreHours.js";
 import nodemailer from "nodemailer";
+import CustomPage from "../models/CustomPage.js";
 
 // Nodemailer transporter for system emails (Welcome & Renewals)
 const transporter = nodemailer.createTransport({
@@ -111,6 +112,32 @@ export const createStore = async (req, res) => {
       trialPlanDays,
       theme: 'default-theme'
     });
+
+    // Seed default homepage for Custom Website store types
+    if (storeType === "Custom Website(HTML,CSS,JS)") {
+      try {
+        await CustomPage.create({
+          storeId: store._id,
+          title: "Homepage",
+          slug: "home",
+          pageType: "custom",
+          description: "Welcome to your new website.",
+          isHomepage: true,
+          isPublished: true,
+          status: "published",
+          bodyHTML: `<!-- Welcome Page -->\n<div style="max-width: 600px; margin: 4rem auto; padding: 2.5rem; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; font-family: system-ui, sans-serif;">\n  <h1 style="color: #0f172a;">Welcome to your new website</h1>\n  <p style="color: #475569;">This is a custom webpage created using HTML, CSS, and JS. You can edit this page directly in your Store Dashboard under Website Builder.</p>\n</div>`,
+          customCSS: `/* Custom page CSS styling */\nbody {\n  background: #f1f5f9;\n  margin: 0;\n}`,
+          customJS: `// Custom page JS logic\nconsole.log("Homepage loaded.");`,
+          seo: {
+            metaTitle: name + " - Welcome",
+            metaDescription: "Welcome to our custom website.",
+            robots: "index, follow"
+          }
+        });
+      } catch (err) {
+        console.error("Failed to seed default custom homepage:", err);
+      }
+    }
 
     // Create default 24x7 store hours
     try {

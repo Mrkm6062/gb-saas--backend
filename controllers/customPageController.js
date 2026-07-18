@@ -155,6 +155,11 @@ export const deletePage = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized store access" });
     }
 
+    // Prevent deleting the homepage
+    if (page.isHomepage || page.slug === 'home') {
+      return res.status(400).json({ message: "The homepage cannot be deleted because it is assigned as the main landing page for your store's root domain." });
+    }
+
     await page.deleteOne();
     res.json({ message: "Page permanently deleted successfully" });
   } catch (error) {
@@ -174,6 +179,11 @@ export const softDeletePage = async (req, res) => {
     const isOwner = await verifyStoreOwner(page.storeId, req.user.userId, req.user.role);
     if (!isOwner) {
       return res.status(403).json({ message: "Unauthorized store access" });
+    }
+
+    // Prevent deleting the homepage
+    if (page.isHomepage || page.slug === 'home') {
+      return res.status(400).json({ message: "The homepage cannot be deleted because it is assigned as the main landing page for your store's root domain." });
     }
 
     page.isDeleted = true;
