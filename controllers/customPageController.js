@@ -429,7 +429,12 @@ export const getPageBySlug = async (req, res) => {
       return res.status(404).json({ message: "Page not found" });
     }
 
-    res.json(page);
+    const pageObj = page.toObject();
+    if (req.store.favicon) {
+      pageObj.favicon = req.store.favicon;
+    }
+
+    res.json(pageObj);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -454,7 +459,12 @@ export const getHomepage = async (req, res) => {
       return res.status(404).json({ message: "Homepage not found" });
     }
 
-    res.json(page);
+    const pageObj = page.toObject();
+    if (req.store.favicon) {
+      pageObj.favicon = req.store.favicon;
+    }
+
+    res.json(pageObj);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
