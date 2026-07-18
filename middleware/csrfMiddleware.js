@@ -18,6 +18,25 @@ export const csrfProtection = (req, res, next) => {
     return next();
   }
 
+  // Bypass CSRF checks for requests originating from trusted hostnames (localhost and subdomains of galibrand.cloud)
+  const origin = req.headers.origin || req.headers.referer;
+  if (origin) {
+    try {
+      const parsedUrl = new URL(origin);
+      const hostname = parsedUrl.hostname;
+      if (
+        hostname === "localhost" ||
+        hostname === "127.0.0.1" ||
+        hostname === "galibrand.cloud" ||
+        hostname.endsWith(".galibrand.cloud")
+      ) {
+        return next();
+      }
+    } catch (err) {
+      // Invalid URL in origin/referer; fall back to standard token validation
+    }
+  }
+
   req.cookies = parseCookies(req.headers.cookie);
   const accessToken = req.cookies.accessToken;
 
