@@ -109,6 +109,14 @@ export const getPublicPwaManifest = async (req, res) => {
     }
 
     res.setHeader("Content-Type", "application/manifest+json");
+    const getIconType = (url) => {
+      if (!url) return "image/png";
+      if (url.toLowerCase().endsWith(".webp")) return "image/webp";
+      if (url.toLowerCase().endsWith(".jpg") || url.toLowerCase().endsWith(".jpeg")) return "image/jpeg";
+      if (url.toLowerCase().endsWith(".svg")) return "image/svg+xml";
+      return "image/png";
+    };
+
     res.json({
       name: settings.appName,
       short_name: settings.shortName,
@@ -120,14 +128,14 @@ export const getPublicPwaManifest = async (req, res) => {
       start_url: "/",
       icons: [
         {
-          src: settings.icon192,
+          src: settings.icon192 ? `/api/upload/download?url=${encodeURIComponent(settings.icon192)}` : "",
           sizes: "192x192",
-          type: "image/png"
+          type: getIconType(settings.icon192)
         },
         {
-          src: settings.icon512,
+          src: settings.icon512 ? `/api/upload/download?url=${encodeURIComponent(settings.icon512)}` : "",
           sizes: "512x512",
-          type: "image/png"
+          type: getIconType(settings.icon512)
         }
       ]
     });
