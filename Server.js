@@ -241,8 +241,8 @@ app.use("/api/custom-assets", customAssetRoutes);
 // Routes
 app.use("/api/payment", paymentRoutes);
 
-// Dynamic PWA Manifest Route (satisfies same-origin CSP rule)
-app.get(["/manifest.json", "/manifest.webmanifest"], subdomainMiddleware, storeResolver, async (req, res) => {
+// Dynamic PWA Manifest Handler (satisfies same-origin CSP rule)
+const handleManifest = async (req, res) => {
   try {
     if (!req.store) {
       return res.status(404).json({ message: "Store context not found" });
@@ -279,7 +279,10 @@ app.get(["/manifest.json", "/manifest.webmanifest"], subdomainMiddleware, storeR
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-});
+};
+
+app.get("/manifest.json", subdomainMiddleware, storeResolver, handleManifest);
+app.get("/manifest.webmanifest", subdomainMiddleware, storeResolver, handleManifest);
 
 // 🔥 SERVE REACT FRONTEND (Must be placed AFTER API routes)
 // Standard Vite build outputs to /dist. Change to /build if using CRA.
@@ -289,7 +292,7 @@ app.use(express.static(frontendPath, { index: false }));
 app.get("*", async (req, res) => {
 
   // Prevent returning index.html for static assets (fixes MIME type errors)
-  if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|json|woff|woff2|ttf|eot)$/)) {
+  if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|json|webmanifest|woff|woff2|ttf|eot)$/)) {
     return res.status(404).send("Static file not found");
   }
 
