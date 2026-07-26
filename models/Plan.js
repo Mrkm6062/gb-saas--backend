@@ -72,11 +72,6 @@ const planSchema = new mongoose.Schema(
       storageLimit: {
         type: Number,
         default: 500, // MB
-      },
-
-      storeLimit: {
-        type: Number,
-        default: 1,
       }
     },
 
@@ -108,7 +103,7 @@ planSchema.methods.getBilling = function (months) {
   if (!bill) return null;
 
   const finalPrice = bill.discountEnabled
-    ? bill.price - (bill.price * bill.discountValue / 100)
+    ? Math.round(bill.price - (bill.price * bill.discountValue / 100))
     : bill.price;
 
   return {
