@@ -245,12 +245,7 @@ app.use("/api/payment", paymentRoutes);
 // Dynamic PWA Manifest Handler (satisfies same-origin CSP rule)
 const handleManifest = async (req, res) => {
   try {
-    let storeId = req.query.storeId;
-    let storeObj = req.store;
-
-    if (!storeObj && storeId) {
-      storeObj = await Store.findOne({ _id: storeId, isDeleted: { $ne: true } });
-    }
+    const storeObj = req.store;
 
     if (!storeObj) {
       return res.status(404).json({ message: "Store context not found" });
@@ -262,35 +257,48 @@ const handleManifest = async (req, res) => {
     }
 
     res.setHeader("Content-Type", "application/manifest+json");
+
     const getIconType = (url) => {
       if (!url) return "image/png";
-      if (url.toLowerCase().endsWith(".webp")) return "image/webp";
-      if (url.toLowerCase().endsWith(".jpg") || url.toLowerCase().endsWith(".jpeg")) return "image/jpeg";
-      if (url.toLowerCase().endsWith(".svg")) return "image/svg+xml";
+      const cleanUrl = url.split("?")[0].toLowerCase();
+      if (cleanUrl.endsWith(".webp")) return "image/webp";
+      if (cleanUrl.endsWith(".jpg") || cleanUrl.endsWith(".jpeg")) return "image/jpeg";
+      if (cleanUrl.endsWith(".svg")) return "image/svg+xml";
       return "image/png";
     };
 
+    const icons = [];
+
+    if (settings.icon192) {
+      icons.push({
+        src: settings.icon192,
+        sizes: "192x192",
+        type: getIconType(settings.icon192),
+        purpose: "any maskable"
+      });
+    }
+
+    if (settings.icon512) {
+      icons.push({
+        src: settings.icon512,
+        sizes: "512x512",
+        type: getIconType(settings.icon512),
+        purpose: "any maskable"
+      });
+    }
+
     res.json({
+      id: "/",
       name: settings.appName,
       short_name: settings.shortName,
-      theme_color: settings.themeColor,
-      background_color: settings.backgroundColor,
+      description: storeObj.description || "",
+      start_url: "/",
+      scope: "/",
       display: "standalone",
       orientation: "portrait",
-      scope: "/",
-      start_url: "/",
-      icons: [
-        {
-          src: settings.icon192 ? `/api/upload/download?url=${encodeURIComponent(settings.icon192)}` : "",
-          sizes: "192x192",
-          type: getIconType(settings.icon192)
-        },
-        {
-          src: settings.icon512 ? `/api/upload/download?url=${encodeURIComponent(settings.icon512)}` : "",
-          sizes: "512x512",
-          type: getIconType(settings.icon512)
-        }
-      ]
+      theme_color: settings.themeColor,
+      background_color: settings.backgroundColor,
+      icons
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
