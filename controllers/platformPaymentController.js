@@ -112,8 +112,17 @@ export const verifyPayment = async (req, res) => {
       const billingRate = plan.getBilling(duration);
       const chargeAmount = billingRate ? billingRate.finalPrice * duration : 0;
 
+      let daysToAdd = 30;
+      if (duration === 6) {
+        daysToAdd = 180;
+      } else if (duration === 12) {
+        daysToAdd = 365;
+      } else {
+        daysToAdd = duration * 30;
+      }
+
       const planExpiryDate = new Date();
-      planExpiryDate.setMonth(planExpiryDate.getMonth() + duration);
+      planExpiryDate.setDate(planExpiryDate.getDate() + daysToAdd);
 
       const invoiceId = `INV-${Date.now().toString().slice(-6).toUpperCase()}`;
 
