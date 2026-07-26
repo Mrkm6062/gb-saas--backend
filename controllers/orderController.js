@@ -580,7 +580,9 @@ export const getOrders = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to view these orders" });
     }
 
-    const orders = await Order.find({ store: storeId }).sort({ createdAt: -1 });
+    const orders = await Order.find({ store: storeId })
+      .populate("orderItems.product", "images")
+      .sort({ createdAt: -1 });
 
     res.json(orders);
   } catch (error) {
