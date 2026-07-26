@@ -10,7 +10,11 @@ const bucket = storage.bucket(process.env.GCS_BUCKET);
 export const uploadImages = async (req, res) => {
   try {
     const { storeId } = req.body;
-    if (!storeId) return res.status(400).json({ message: "Store ID is required" });
+    console.log(`[Upload] Request received. storeId: ${storeId}`);
+    if (!storeId) {
+      console.log(`[Upload] Error: Store ID is required`);
+      return res.status(400).json({ message: "Store ID is required" });
+    }
 
     let storeFolder = "superadmin";
     let storageLimitMB = null;
@@ -18,16 +22,22 @@ export const uploadImages = async (req, res) => {
     // Only look up the store if it's not a Superadmin global upload
     if (storeId !== "000000000000000000000000") {
       const store = await Store.findById(storeId).populate('planId');
-      if (!store) return res.status(404).json({ message: "Store not found" });
+      if (!store) {
+        console.log(`[Upload] Error: Store not found`);
+        return res.status(404).json({ message: "Store not found" });
+      }
       storeFolder = store.storeSlug || store.storeId;
       
       // Determine storage limit from plan or default to 500MB
       storageLimitMB = store.planId?.features?.storageLimit || 500;
     }
+    console.log(`[Upload] Target folder path prefix: ${storeFolder}`);
 
     if (!req.files || req.files.length === 0) {
+      console.log(`[Upload] Error: No files uploaded`);
       return res.status(400).json({ message: "No files uploaded" });
     }
+    console.log(`[Upload] Files to process: ${req.files.length}`);
 
     // Storage limit check for standard stores
     if (storageLimitMB !== null) {
@@ -42,6 +52,7 @@ export const uploadImages = async (req, res) => {
       const currentUsedBytes = existingFiles.reduce((sum, file) => sum + parseInt(file.metadata.size || 0, 10), 0);
       
       if (currentUsedBytes + incomingBytes > limitBytes) {
+        console.log(`[Upload] Error: Storage limit exceeded`);
         return res.status(403).json({ 
           message: `Storage limit exceeded. Your plan allows up to ${storageLimitMB >= 1000 ? storageLimitMB/1000 + 'GB' : storageLimitMB + 'MB'}. Please delete old media or upgrade your plan.` 
         });
@@ -50,13 +61,16 @@ export const uploadImages = async (req, res) => {
 
     // Validate file sizes and check that all uploaded files are strictly images (both MIME and actual content)
     for (const file of req.files) {
+      console.log(`[Upload] Validating: ${file.originalname}, mime: ${file.mimetype}, size: ${file.size} bytes`);
       const isSuperAdmin = req.user && req.user.role === 'superadmin';
       const limit = isSuperAdmin ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
       if (file.size > limit) {
+        console.log(`[Upload] Error: File size too large. Limit is ${limit} bytes`);
         return res.status(400).json({ message: `File size too large: ${file.originalname}. Maximum allowed size is ${isSuperAdmin ? '20MB' : '5MB'}.` });
       }
 
       if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('video/')) {
+        console.log(`[Upload] Error: Invalid file type`);
         return res.status(400).json({ message: `Invalid file type: ${file.originalname}. Only image and video files are allowed.` });
       }
 
@@ -66,6 +80,7 @@ export const uploadImages = async (req, res) => {
       if (isIco) {
         // Validate ICO magic numbers: First 4 bytes must be 00 00 01 00
         if (file.buffer.length < 4 || file.buffer[0] !== 0 || file.buffer[1] !== 0 || file.buffer[2] !== 1 || file.buffer[3] !== 0) {
+          console.log(`[Upload] Error: Corrupted ICO file`);
           return res.status(400).json({ message: `File ${file.originalname} is a fake or corrupted ICO file.` });
         }
       } else if (!isVideo && !file.mimetype.startsWith('image/svg')) {
@@ -73,10 +88,12 @@ export const uploadImages = async (req, res) => {
         try {
           await sharp(file.buffer).metadata();
         } catch (error) {
+          console.log(`[Upload] Error: Invalid image metadata check failed`);
           return res.status(400).json({ message: `File ${file.originalname} is not a valid image. It might be a renamed video or document.` });
         }
       }
     }
+    console.log(`[Upload] Size and type validation passed for all files.`);
 
     const uploadedUrls = [];
 
@@ -89,16 +106,19 @@ export const uploadImages = async (req, res) => {
       const isVideo = file.mimetype.startsWith('video/');
 
       if (isVideo) {
+        console.log(`[Upload] Processing as video: ${originalName}`);
         // Skip sharp conversion for videos entirely
         fileBuffer = file.buffer;
         contentType = file.mimetype;
         extension = originalName.split('.').pop() || 'mp4';
       } else if (originalName.endsWith('.ico') || file.mimetype === 'image/x-icon' || file.mimetype === 'image/vnd.microsoft.icon') {
+        console.log(`[Upload] Processing as ICO: ${originalName}`);
         // Skip sharp conversion for .ico
         fileBuffer = file.buffer;
         contentType = 'image/x-icon';
         extension = 'ico';
       } else if (originalName.endsWith('.svg') || file.mimetype === 'image/svg+xml') {
+        console.log(`[Upload] Processing as SVG: ${originalName}`);
         // Optimize and sanitize SVG using SVGO (Bypasses PM2 jsdom ESM conflict)
         const result = optimize(file.buffer.toString('utf-8'), {
           multipass: true,
@@ -115,6 +135,7 @@ export const uploadImages = async (req, res) => {
         contentType = 'image/svg+xml';
         extension = 'svg';
       } else {
+        console.log(`[Upload] Processing image with sharp: ${originalName}`);
         // Convert all other image formats to WebP for fast compression while keeping original size (dimensions)
         let sharpInstance = sharp(file.buffer);
         const type = req.body.type || 'product';
@@ -131,12 +152,15 @@ export const uploadImages = async (req, res) => {
         fileBuffer = await sharpInstance
           .webp({ quality: quality })
           .toBuffer();
+        console.log(`[Upload] Sharp WebP compression completed. Output size: ${fileBuffer.length} bytes`);
 
         // If compressed image is still larger than 2MB, compress with slightly lower quality, but still keep original resolution
         if (fileBuffer.length > 2 * 1024 * 1024) {
+          console.log(`[Upload] Size exceeds 2MB. Recompressing with quality limit...`);
           fileBuffer = await sharp(file.buffer)
             .webp({ quality: Math.max(55, quality - 15) })
             .toBuffer();
+          console.log(`[Upload] Sharp re-compression completed. Output size: ${fileBuffer.length} bytes`);
         }
         contentType = 'image/webp';
         extension = 'webp';
@@ -147,6 +171,7 @@ export const uploadImages = async (req, res) => {
       const gcsFilePath = `${storeFolder}/media/${safeBaseName}-${Date.now()}.${extension}`;
       const blob = bucket.file(gcsFilePath);
 
+      console.log(`[Upload] Saving file to GCS at path: ${gcsFilePath}`);
       await blob.save(fileBuffer, {
         metadata: { 
           contentType: contentType,
@@ -154,15 +179,17 @@ export const uploadImages = async (req, res) => {
         },
         resumable: false,
       });
+      console.log(`[Upload] Successfully saved to GCS bucket.`);
 
       // Encode URI components to handle any special characters in the original name safely
       const publicUrl = `https://storage.googleapis.com/${process.env.GCS_BUCKET}/${encodeURIComponent(gcsFilePath).replace(/%2F/g, '/')}`;
       uploadedUrls.push(publicUrl);
     }
 
+    console.log(`[Upload] Request completed successfully. Responding with URLs:`, uploadedUrls);
     res.status(200).json({ urls: uploadedUrls });
   } catch (error) {
-    console.error("Upload error:", error);
+    console.error("[Upload] Critical Upload error:", error);
     res.status(500).json({ message: error.message });
   }
 };
