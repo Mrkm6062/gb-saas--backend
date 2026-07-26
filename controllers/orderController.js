@@ -639,6 +639,21 @@ export const updateOrderStatus = async (req, res) => {
     const previousStatus = order.orderStatus;
     const previousPaymentStatus = order.paymentStatus;
 
+    // Check if order was already delivered
+    if (previousStatus === 'delivered') {
+      const deliveredTime = order.deliveredAt || order.updatedAt;
+      const tenDaysAgo = new Date();
+      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+
+      if (deliveredTime && new Date(deliveredTime) < tenDaysAgo) {
+        return res.status(400).json({ message: "Delivered orders cannot be modified after 10 days." });
+      }
+
+      if (orderStatus && orderStatus !== 'returned' && orderStatus !== 'delivered') {
+        return res.status(400).json({ message: "Delivered orders can only be updated to returned status." });
+      }
+    }
+
     if (['canceled', 'returned'].includes(previousStatus)) {
       if (orderStatus && orderStatus !== previousStatus) {
         return res.status(400).json({ message: "Cannot change the status of a canceled or returned order." });
@@ -654,6 +669,10 @@ export const updateOrderStatus = async (req, res) => {
 
     if (orderStatus) order.orderStatus = orderStatus;
     if (paymentStatus) order.paymentStatus = paymentStatus;
+
+    if (orderStatus === 'delivered' && previousStatus !== 'delivered') {
+      order.deliveredAt = new Date();
+    }
 
     if (ShippingMethod !== undefined) order.ShippingMethod = ShippingMethod;
     if (ShippingTrackingNumber !== undefined) order.ShippingTrackingNumber = ShippingTrackingNumber;

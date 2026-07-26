@@ -99,6 +99,10 @@ const orderSchema = new mongoose.Schema(
     orderConfirmed: {
       type: Boolean,
       default: false
+    },
+    deliveredAt: {
+      type: Date,
+      default: null
     }
   },
   { timestamps: true }
