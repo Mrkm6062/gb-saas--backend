@@ -86,3 +86,45 @@ export const getPublicPwaSettings = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Get dynamic PWA manifest JSON for storefront (Public)
+// @route   GET /api/pwa/manifest
+// @access  Public
+export const getPublicPwaManifest = async (req, res) => {
+  try {
+    if (!req.store) {
+      return res.status(404).json({ message: "Store context not found" });
+    }
+
+    const settings = await Pwa.findOne({ storeId: req.store._id });
+    if (!settings || !settings.enabled) {
+      return res.status(404).json({ message: "PWA manifest is disabled or not configured." });
+    }
+
+    res.setHeader("Content-Type", "application/manifest+json");
+    res.json({
+      name: settings.appName,
+      short_name: settings.shortName,
+      theme_color: settings.themeColor,
+      background_color: settings.backgroundColor,
+      display: "standalone",
+      orientation: "portrait",
+      scope: "/",
+      start_url: "/",
+      icons: [
+        {
+          src: settings.icon192,
+          sizes: "192x192",
+          type: "image/png"
+        },
+        {
+          src: settings.icon512,
+          sizes: "512x512",
+          type: "image/png"
+        }
+      ]
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

@@ -11,6 +11,7 @@ const router = express.Router();
 // --- PUBLIC ROUTES ---
 // This is the main endpoint for the storefront to get its data via domain/subdomain.
 router.get("/data", storeResolver, getStoreData);
+router.get("/public", storeResolver, getStoreData);
 
 // --- USER-AUTHENTICATED ROUTES (for the admin dashboard) ---
 router.post("/", protect, createStore);

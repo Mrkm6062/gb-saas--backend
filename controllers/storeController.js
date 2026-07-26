@@ -10,6 +10,7 @@ import PlatformSettings from "../models/PlatformSettings.js";
 import StoreHours from "../models/StoreHours.js";
 import nodemailer from "nodemailer";
 import CustomPage from "../models/CustomPage.js";
+import Pwa from "../models/Pwa.js";
 
 // Nodemailer transporter for system emails (Welcome & Renewals)
 const transporter = nodemailer.createTransport({
@@ -453,6 +454,22 @@ export const getStoreData = async (req, res) => {
       if (themeDoc && themeDoc.themeFolder) {
         storeObj.themeFolder = themeDoc.themeFolder;
       }
+    }
+
+    // Attach PWA settings dynamically from MongoDB
+    const pwaSettings = await Pwa.findOne({ storeId: req.store._id });
+    if (pwaSettings) {
+      storeObj.pwa = {
+        enabled: pwaSettings.enabled,
+        appName: pwaSettings.appName,
+        shortName: pwaSettings.shortName,
+        themeColor: pwaSettings.themeColor,
+        backgroundColor: pwaSettings.backgroundColor,
+        icon192: pwaSettings.icon192,
+        icon512: pwaSettings.icon512
+      };
+    } else {
+      storeObj.pwa = { enabled: false };
     }
 
     res.json(storeObj);

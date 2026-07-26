@@ -242,7 +242,7 @@ app.use("/api/custom-assets", customAssetRoutes);
 app.use("/api/payment", paymentRoutes);
 
 // Dynamic PWA Manifest Route (satisfies same-origin CSP rule)
-app.get("/manifest.json", subdomainMiddleware, storeResolver, async (req, res) => {
+app.get(["/manifest.json", "/manifest.webmanifest"], subdomainMiddleware, storeResolver, async (req, res) => {
   try {
     if (!req.store) {
       return res.status(404).json({ message: "Store context not found" });
