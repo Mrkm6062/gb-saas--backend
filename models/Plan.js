@@ -1,25 +1,124 @@
 import mongoose from "mongoose";
 
-const planSchema = new mongoose.Schema({
-  name: { type: String, required: true, enum: ['Starter', 'Basic', 'Pro', 'Premium'], unique: true },
-  price: { type: Number, required: true }, // Monthly price
-  features: {
-    maxProducts: { type: Number, required: true, default: 20 },
-    customDomain: { type: Boolean, default: false },
-    analytics: { type: Boolean, default: false },
-    themes: { type: Boolean, default: false },
-    storageLimit: { type: Number, default: 500 }, // Add this line! (500 = 500MB, 2000 = 2GB)
-    storeLimit: { type: Number, default: 1}, 
-    freeSsl: { type: Boolean, default: false },
-    securityHeaders: { type: Boolean, default: false },
-    basicAnalytics: { type: Boolean, default: false },
-    advanceAnalytics: { type: Boolean, default: false },
-    whatsappOrderButton: { type: Boolean, default: false },
-    sevenDaysTrial: { type: Boolean, default: true },
-    prioritySupport: { type: Boolean, default: false }
-  }
-}, {
-  timestamps: true
-});
+const billingSchema = new mongoose.Schema(
+  {
+    durationMonths: {
+      type: Number,
+      required: true,
+      enum: [1, 6, 12],
+    },
 
-export default mongoose.models.Plan || mongoose.model("Plan", planSchema);
+    price: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    discountEnabled: {
+      type: Boolean,
+      default: false,
+    },
+
+    discountType: {
+      type: String,
+      enum: ["percentage"],
+      default: "percentage",
+    },
+
+    discountValue: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    }
+  },
+  {
+    _id: false,
+  }
+);
+
+const planSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+
+    description: {
+      type: String,
+      default: "",
+    },
+
+    active: {
+      type: Boolean,
+      default: true,
+    },
+
+    popular: {
+      type: Boolean,
+      default: false,
+    },
+
+    billing: [billingSchema],
+
+    limits: {
+      maxProducts: {
+        type: Number,
+        default: 20,
+      },
+
+      storageLimit: {
+        type: Number,
+        default: 500, // MB
+      },
+
+      storeLimit: {
+        type: Number,
+        default: 1,
+      }
+    },
+
+    features: [
+      {
+        feature: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Feature",
+          required: true,
+        },
+
+        name: {
+          type: String,
+          required: true,
+        }
+      }
+    ]
+  },
+  {
+    timestamps: true,
+  }
+);
+
+planSchema.methods.getBilling = function (months) {
+  const bill = this.billing.find(
+    x => x.durationMonths === months
+  );
+
+  if (!bill) return null;
+
+  const finalPrice = bill.discountEnabled
+    ? bill.price - (bill.price * bill.discountValue / 100)
+    : bill.price;
+
+  return {
+    durationMonths: bill.durationMonths,
+    originalPrice: bill.price,
+    finalPrice,
+    discount: bill.discountValue,
+    discountEnabled: bill.discountEnabled
+  };
+};
+
+export default mongoose.models.Plan ||
+mongoose.model("Plan", planSchema);

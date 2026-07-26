@@ -4,8 +4,12 @@ import Store from "../models/Store.js";
 // GET ALL PLANS
 export const getPlans = async (req, res) => {
   try {
-    // Sort by price ascending to ensure a consistent order on the pricing page
-    const plans = await Plan.find().sort({ price: 1 });
+    const filter = {};
+    // If not requested from superadmin, only show active plans
+    if (!req.originalUrl.includes("/superadmin/")) {
+      filter.active = true;
+    }
+    const plans = await Plan.find(filter).populate("features.feature");
     res.json(plans);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -15,13 +19,46 @@ export const getPlans = async (req, res) => {
 // CREATE OR UPDATE PLAN
 export const createOrUpdatePlan = async (req, res) => {
   try {
-    const { name, price, features } = req.body;
-    const plan = await Plan.findOneAndUpdate(
-      { name },
-      { price, features },
-      { new: true, upsert: true } // Creates if it doesn't exist, updates if it does
-    );
+    const { _id, name, description, active, popular, billing, limits, features } = req.body;
+
+    let plan;
+    if (_id) {
+      plan = await Plan.findByIdAndUpdate(
+        _id,
+        { name, description, active, popular, billing, limits, features },
+        { new: true }
+      );
+    } else {
+      plan = await Plan.create({
+        name,
+        description,
+        active,
+        popular,
+        billing,
+        limits,
+        features
+      });
+    }
+
+    if (!plan) {
+      return res.status(404).json({ message: "Plan not found" });
+    }
+
+    // Populate reference data
+    await plan.populate("features.feature");
     res.json(plan);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// DELETE PLAN
+export const deletePlan = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const plan = await Plan.findByIdAndDelete(id);
+    if (!plan) return res.status(404).json({ message: "Plan not found" });
+    res.json({ message: "Plan deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -31,7 +68,7 @@ export const createOrUpdatePlan = async (req, res) => {
 export const assignPlanToStore = async (req, res) => {
   try {
     const { id } = req.params;
-    const { planId, trialDays } = req.body; // e.g., trialDays: 7 for a 1-week trial
+    const { planId, trialDays } = req.body;
 
     const store = await Store.findById(id);
     if (!store) return res.status(404).json({ message: "Store not found" });
@@ -44,7 +81,7 @@ export const assignPlanToStore = async (req, res) => {
     store.isTrialActive = !!trialDays;
     store.planStartDate = new Date();
     store.planExpiryDate = new Date();
-    store.planExpiryDate.setDate(store.planExpiryDate.getDate() + (trialDays || 30)); // Default 30 days if not trial
+    store.planExpiryDate.setDate(store.planExpiryDate.getDate() + (trialDays || 30));
 
     await store.save();
     res.json({ message: "Plan assigned successfully", store });

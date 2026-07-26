@@ -93,7 +93,7 @@ export const createSubscriptionOrder = async (req, res) => {
 
 export const verifyPayment = async (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, storeId, planId } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, storeId, planId, billingDuration } = req.body;
     const settings = await PlatformPaymentSettings.findOne();
 
     const keySecret = decrypt(settings.razorpayKeySecret);
@@ -105,10 +105,16 @@ export const verifyPayment = async (req, res) => {
     const expectedSignature = crypto.createHmac("sha256", keySecret).update(body.toString()).digest("hex");
 
     if (expectedSignature === razorpay_signature) {
-      const planExpiryDate = new Date();
-      planExpiryDate.setDate(planExpiryDate.getDate() + 30); // Grant 30 days of access
-
       const plan = await Plan.findById(planId);
+      if (!plan) return res.status(404).json({ message: "Plan not found" });
+
+      const duration = Number(billingDuration) || 1;
+      const billingRate = plan.getBilling(duration);
+      const chargeAmount = billingRate ? billingRate.finalPrice * duration : 0;
+
+      const planExpiryDate = new Date();
+      planExpiryDate.setMonth(planExpiryDate.getMonth() + duration);
+
       const invoiceId = `INV-${Date.now().toString().slice(-6).toUpperCase()}`;
 
       await Store.findByIdAndUpdate(storeId, { 
@@ -118,13 +124,13 @@ export const verifyPayment = async (req, res) => {
           isTrialActive: false,
           planStartDate: new Date(),
           planExpiryDate: planExpiryDate,
-          lastPaymentId: razorpay_payment_id // Log the payment confirmation
+          lastPaymentId: razorpay_payment_id
         },
         $push: {
           billingHistory: {
             planId: plan._id,
             planName: plan.name,
-            amount: plan.price,
+            amount: chargeAmount,
             date: new Date(),
             transactionId: razorpay_payment_id,
             invoiceId: invoiceId
