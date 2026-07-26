@@ -412,6 +412,20 @@ export const getPageBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
     
+    // Bypass reserved files so they are never treated as page slugs
+    const reservedSlugs = [
+      "manifest.webmanifest",
+      "manifest.json",
+      "sw.js",
+      "robots.txt",
+      "sitemap.xml",
+      "favicon.ico",
+      "llms.txt"
+    ];
+    if (reservedSlugs.includes(slug.toLowerCase())) {
+      return res.status(404).json({ message: "Not found (reserved system file slug)" });
+    }
+    
     // Resolve storeId from storeResolver middleware (req.store)
     if (!req.store) {
       return res.status(404).json({ message: "Store context not found" });

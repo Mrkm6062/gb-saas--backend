@@ -292,6 +292,16 @@ const handleManifest = async (req, res) => {
 app.get("/manifest.json", subdomainMiddleware, storeResolver, handleManifest);
 app.get("/manifest.webmanifest", subdomainMiddleware, storeResolver, handleManifest);
 
+app.get("/sw.js", async (req, res) => {
+  try {
+    const swPath = path.join(frontendPath, "sw.js");
+    res.setHeader("Content-Type", "application/javascript; charset=utf-8");
+    res.sendFile(swPath);
+  } catch (err) {
+    res.status(500).send("Service Worker failed to load");
+  }
+});
+
 // 🔥 SERVE REACT FRONTEND (Must be placed AFTER API routes)
 // Standard Vite build outputs to /dist. Change to /build if using CRA.
 const frontendPath = process.env.STOREFRONT_BUILD_PATH || path.join(__dirname, "../store-frontend/dist");
