@@ -68,8 +68,6 @@ import customMenuRoutes from "./routes/customMenuRoutes.js";
 import customAssetRoutes from "./routes/customAssetRoutes.js";
 import trackingSettingsRoutes from "./routes/trackingSettingsRoutes.js";
 import pwaRoutes from "./routes/pwaRoutes.js";
-import { subdomainMiddleware } from "./middleware/subdomain.js";
-import { storeResolver } from "./middleware/storeResolver.js";
 import Pwa from "./models/Pwa.js";
 
 
