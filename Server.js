@@ -120,6 +120,7 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
+        manifestSrc: ["'self'", "https://api.galibrand.cloud", "https://*.galibrand.cloud", "http://localhost:*", "http://127.0.0.1:*"],
         scriptSrc: [
           "'self'",
           "'unsafe-inline'",
@@ -244,11 +245,18 @@ app.use("/api/payment", paymentRoutes);
 // Dynamic PWA Manifest Handler (satisfies same-origin CSP rule)
 const handleManifest = async (req, res) => {
   try {
-    if (!req.store) {
+    let storeId = req.query.storeId;
+    let storeObj = req.store;
+
+    if (!storeObj && storeId) {
+      storeObj = await Store.findOne({ _id: storeId, isDeleted: { $ne: true } });
+    }
+
+    if (!storeObj) {
       return res.status(404).json({ message: "Store context not found" });
     }
 
-    const settings = await Pwa.findOne({ storeId: req.store._id });
+    const settings = await Pwa.findOne({ storeId: storeObj._id });
     if (!settings || !settings.enabled) {
       return res.status(404).json({ message: "PWA manifest is disabled or not configured." });
     }

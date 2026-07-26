@@ -92,11 +92,18 @@ export const getPublicPwaSettings = async (req, res) => {
 // @access  Public
 export const getPublicPwaManifest = async (req, res) => {
   try {
-    if (!req.store) {
+    let storeId = req.query.storeId;
+    let storeObj = req.store;
+
+    if (!storeObj && storeId) {
+      storeObj = await Store.findOne({ _id: storeId, isDeleted: { $ne: true } });
+    }
+
+    if (!storeObj) {
       return res.status(404).json({ message: "Store context not found" });
     }
 
-    const settings = await Pwa.findOne({ storeId: req.store._id });
+    const settings = await Pwa.findOne({ storeId: storeObj._id });
     if (!settings || !settings.enabled) {
       return res.status(404).json({ message: "PWA manifest is disabled or not configured." });
     }
