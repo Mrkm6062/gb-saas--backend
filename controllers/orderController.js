@@ -637,6 +637,20 @@ export const updateOrderStatus = async (req, res) => {
     if (!store) return res.status(403).json({ message: "Not authorized to update this order" });
 
     const previousStatus = order.orderStatus;
+    const previousPaymentStatus = order.paymentStatus;
+
+    if (['canceled', 'returned'].includes(previousStatus)) {
+      if (orderStatus && orderStatus !== previousStatus) {
+        return res.status(400).json({ message: "Cannot change the status of a canceled or returned order." });
+      }
+      if (paymentStatus && paymentStatus !== previousPaymentStatus) {
+        if (paymentStatus === 'refunded' && previousPaymentStatus === 'paid') {
+          // Refund is allowed for paid canceled/returned orders
+        } else {
+          return res.status(400).json({ message: "Cannot modify payment status of a canceled/returned order unless processing a refund for a paid transaction." });
+        }
+      }
+    }
 
     if (orderStatus) order.orderStatus = orderStatus;
     if (paymentStatus) order.paymentStatus = paymentStatus;
