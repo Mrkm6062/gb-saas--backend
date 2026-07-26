@@ -456,7 +456,7 @@ export const getHomepage = async (req, res) => {
     });
 
     if (!page) {
-      return res.status(404).json({ message: "Homepage not found" });
+      return res.status(200).json(null);
     }
 
     const pageObj = page.toObject();
