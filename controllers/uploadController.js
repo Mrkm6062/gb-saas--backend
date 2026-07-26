@@ -50,8 +50,10 @@ export const uploadImages = async (req, res) => {
 
     // Validate file sizes and check that all uploaded files are strictly images (both MIME and actual content)
     for (const file of req.files) {
-      if (file.size > 5 * 1024 * 1024) {
-        return res.status(400).json({ message: `File size too large: ${file.originalname}. Maximum allowed size is 5MB.` });
+      const isSuperAdmin = req.user && req.user.role === 'superadmin';
+      const limit = isSuperAdmin ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
+      if (file.size > limit) {
+        return res.status(400).json({ message: `File size too large: ${file.originalname}. Maximum allowed size is ${isSuperAdmin ? '20MB' : '5MB'}.` });
       }
 
       if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('video/')) {
