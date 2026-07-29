@@ -30,11 +30,10 @@ export const createProduct = async (req, res) => {
     }
 
     // 2. Plan Limit Feature Enforcement
-    if (store.planId) {
-      const productCount = await Product.countDocuments({ storeId });
-      if (productCount >= store.planId.features.maxProducts) {
-        return res.status(403).json({ message: `Plan limit reached. Maximum ${store.planId.features.maxProducts} products allowed.` });
-      }
+    const maxProducts = store.planId?.limits?.maxProducts || 20;
+    const productCount = await Product.countDocuments({ storeId });
+    if (productCount >= maxProducts) {
+      return res.status(403).json({ message: `Plan limit reached. Maximum ${maxProducts} products allowed.` });
     }
 
     // 3. Generate a unique SEO slug

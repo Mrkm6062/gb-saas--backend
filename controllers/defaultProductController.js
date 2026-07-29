@@ -36,8 +36,12 @@ export const importDefaultProducts = async (req, res) => {
     if (!storeId || !storeType) return res.status(400).json({ message: "storeId and storeType are required." });
 
     // Ensure store belongs to the authenticated user
-    const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId });
+    const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId }).populate("planId");
     if (!store) return res.status(403).json({ message: "Not authorized to import products to this store." });
+
+    if (store.subscriptionStatus === 'expired') {
+      return res.status(403).json({ message: "Subscription expired. Please upgrade your plan to import products." });
+    }
 
     // Fetch active default products for the specified type
     let query = { storeTypes: storeType, isActive: true };
@@ -59,6 +63,17 @@ export const importDefaultProducts = async (req, res) => {
     const productsToProcess = defaultProducts.filter(dp => !(importOnlyMissing && existingIds.includes(dp._id.toString())));
 
     if (!productsToProcess.length) return res.json({ message: "All available default products have already been imported.", count: 0 });
+
+    // Plan limits validation
+    const maxProducts = store.planId?.limits?.maxProducts || 20;
+    const currentProductCount = await Product.countDocuments({ storeId });
+    if (currentProductCount >= maxProducts) {
+      return res.status(403).json({ message: `Plan limit reached. You already have ${currentProductCount}/${maxProducts} products.` });
+    }
+
+    if (currentProductCount + productsToProcess.length > maxProducts) {
+      return res.status(403).json({ message: `Plan limit exceeded. You can only import up to ${maxProducts - currentProductCount} more products.` });
+    }
 
     const categoryCache = {};
     const productsToInsert = [];
