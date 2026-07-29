@@ -42,19 +42,19 @@ export const verifyEmployee = async (req, res) => {
 // CREATE NEW STORE
 export const createStore = async (req, res) => {
   try {
-    const { name, storeType, metaDescription, planId, empId } = req.body;
+    const { name, storeType, metaDescription, planId, empId, storeSlug: customSlug } = req.body;
 
     // Prevent undefined.toLowerCase() crash
     if (!name || typeof name !== 'string') {
       return res.status(400).json({ message: "A valid store name is required" });
     }
 
-    // Generate unique subdomain based on name (e.g., "My Store" -> "mystore")
-    const storeSlug = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    // Generate unique subdomain based on name or custom input
+    const storeSlug = customSlug ? customSlug.toLowerCase().replace(/[^a-z0-9-]/g, "") : name.toLowerCase().replace(/[^a-z0-9]/g, "");
     const storeExists = await Store.findOne({ storeSlug });
 
     if (storeExists) {
-      return res.status(400).json({ message: "Store name is already taken. Try another." });
+      return res.status(400).json({ message: "Store URL/Slug is already taken. Try another." });
     }
 
     // Validate Employee ID if provided
