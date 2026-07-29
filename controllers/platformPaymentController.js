@@ -121,18 +121,34 @@ export const verifyPayment = async (req, res) => {
         daysToAdd = duration * 30;
       }
 
+      const store = await Store.findById(storeId);
+      if (!store) return res.status(404).json({ message: "Store not found" });
+
+      const isFirstPayment = !store.billingHistory || store.billingHistory.length === 0;
+
       const planExpiryDate = new Date();
-      planExpiryDate.setDate(planExpiryDate.getDate() + daysToAdd);
+      let subscriptionStatus = 'active';
+      let isTrialActive = false;
+      let planStartDate = new Date();
+
+      if (isFirstPayment) {
+        isTrialActive = true;
+        subscriptionStatus = 'trial';
+        planExpiryDate.setDate(planExpiryDate.getDate() + 7 + daysToAdd);
+        planStartDate.setDate(planStartDate.getDate() + 7);
+      } else {
+        planExpiryDate.setDate(planExpiryDate.getDate() + daysToAdd);
+      }
 
       const invoiceId = `INV-${Date.now().toString().slice(-6).toUpperCase()}`;
 
       await Store.findByIdAndUpdate(storeId, { 
         $set: {
-          subscriptionStatus: 'active', 
+          subscriptionStatus, 
           planId: planId,
-          isTrialActive: false,
-          planStartDate: new Date(),
-          planExpiryDate: planExpiryDate,
+          isTrialActive,
+          planStartDate,
+          planExpiryDate,
           lastPaymentId: razorpay_payment_id
         },
         $push: {
