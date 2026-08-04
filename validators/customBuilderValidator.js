@@ -41,7 +41,7 @@ const menuItemSchemaVal = z.lazy(() =>
   z.object({
     label: z.string().min(1, "Menu item label is required").max(100),
     url: z.string().max(500).optional().default(""),
-    pageId: z.string().nullable().optional(),
+    pageId: z.union([z.string(), z.object({ _id: z.string() })]).nullable().optional(),
     target: z.enum(["_self", "_blank"]).optional().default("_self"),
     order: z.number().optional().default(0),
     icon: z.string().optional().default(""),

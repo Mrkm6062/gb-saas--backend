@@ -11,6 +11,22 @@ const verifyStoreOwner = async (storeId, userId, role) => {
   return !!store;
 };
 
+const sanitizeMenuItems = (items) => {
+  if (!items) return [];
+  return items.map(item => {
+    let pageId = item.pageId;
+    if (pageId && typeof pageId === 'object') {
+      pageId = pageId._id;
+    }
+    const children = item.children ? sanitizeMenuItems(item.children) : [];
+    return {
+      ...item,
+      pageId,
+      children
+    };
+  });
+};
+
 // CREATE MENU
 export const createMenu = async (req, res) => {
   try {
@@ -29,10 +45,12 @@ export const createMenu = async (req, res) => {
       return res.status(400).json({ message: "Validation error", errors: parsed.error.format() });
     }
 
+    const cleanedMenuItems = sanitizeMenuItems(parsed.data.menuItems);
+
     const menu = await CustomMenu.create({
       storeId,
       menuName: parsed.data.menuName,
-      menuItems: parsed.data.menuItems,
+      menuItems: cleanedMenuItems,
     });
 
     res.status(201).json(menu);
@@ -61,7 +79,7 @@ export const updateMenu = async (req, res) => {
     }
 
     menu.menuName = parsed.data.menuName;
-    menu.menuItems = parsed.data.menuItems;
+    menu.menuItems = sanitizeMenuItems(parsed.data.menuItems);
 
     const updatedMenu = await menu.save();
     res.json(updatedMenu);
