@@ -65,44 +65,19 @@ export const calculatePublicDelivery = async (req, res) => {
     const cleanPostOffice = (postOffice || "").toLowerCase().trim();
     const cleanLocality = (locality || "").toLowerCase().trim();
 
-    // Check deliveryMode availability
-    if (deliveryMode === "all") {
-      available = true;
-    } else if (deliveryMode === "state") {
-      if (cleanState && (allowedStates.includes(cleanState) || areas.some(a => a.type === "state" && (a.state?.toLowerCase().trim() === cleanState || a.name?.toLowerCase().trim() === cleanState)))) {
-        available = true;
-      }
-    } else if (deliveryMode === "district") {
-      if (cleanDistrict && (areas.some(a => a.type === "district" && (a.district?.toLowerCase().trim() === cleanDistrict || a.name?.toLowerCase().trim() === cleanDistrict)) || deliveryLocations.some(l => l.type === "district" && l.enabled && l.name?.toLowerCase().trim() === cleanDistrict))) {
-        available = true;
-      }
-    } else if (deliveryMode === "pincode") {
-      if (cleanPincode && (allowedPincodes.includes(cleanPincode) || areas.some(a => a.pincode === cleanPincode) || deliveryLocations.some(l => l.type === "pincode" && l.enabled && l.pincode === cleanPincode))) {
-        available = true;
-      }
-    } else if (deliveryMode === "postOffice") {
-      if (cleanPostOffice && (areas.some(a => a.type === "postOffice" && (a.postOffice?.toLowerCase().trim() === cleanPostOffice || a.name?.toLowerCase().trim() === cleanPostOffice)) || deliveryLocations.some(l => l.type === "postOffice" && l.enabled && l.name?.toLowerCase().trim() === cleanPostOffice))) {
-        available = true;
-      }
-    } else if (deliveryMode === "locality") {
-      if (cleanLocality && (areas.some(a => ["village", "building", "chawl"].includes(a.type) && a.name?.toLowerCase().trim() === cleanLocality) || deliveryLocations.some(l => ["village", "building", "chawl"].includes(l.type) && l.enabled && l.name?.toLowerCase().trim() === cleanLocality))) {
-        available = true;
-      }
-    }
-
     // Find specific location charge if available
     let foundArea = null;
     if (cleanLocality) {
-      foundArea = areas.find(a => ["village", "building", "chawl"].includes(a.type) && a.name?.toLowerCase().trim() === cleanLocality) ||
-                  deliveryLocations.find(l => ["village", "building", "chawl"].includes(l.type) && l.enabled && l.name?.toLowerCase().trim() === cleanLocality);
+      foundArea = areas.find(a => a.name?.toLowerCase().trim() === cleanLocality) ||
+                  deliveryLocations.find(l => l.enabled && l.name?.toLowerCase().trim() === cleanLocality);
     }
     if (!foundArea && cleanPostOffice) {
-      foundArea = areas.find(a => a.type === "postOffice" && (a.postOffice?.toLowerCase().trim() === cleanPostOffice || a.name?.toLowerCase().trim() === cleanPostOffice)) ||
-                  deliveryLocations.find(l => l.type === "postOffice" && l.enabled && l.name?.toLowerCase().trim() === cleanPostOffice);
+      foundArea = areas.find(a => a.postOffice?.toLowerCase().trim() === cleanPostOffice || a.name?.toLowerCase().trim() === cleanPostOffice) ||
+                  deliveryLocations.find(l => l.enabled && l.name?.toLowerCase().trim() === cleanPostOffice);
     }
     if (!foundArea && cleanPincode) {
-      foundArea = areas.find(a => a.type === "pincode" && a.pincode === cleanPincode) ||
-                  deliveryLocations.find(l => l.type === "pincode" && l.enabled && l.pincode === cleanPincode);
+      foundArea = areas.find(a => a.pincode === cleanPincode) ||
+                  deliveryLocations.find(l => l.enabled && l.pincode === cleanPincode);
     }
     if (!foundArea && cleanDistrict) {
       foundArea = areas.find(a => a.type === "district" && (a.district?.toLowerCase().trim() === cleanDistrict || a.name?.toLowerCase().trim() === cleanDistrict)) ||
@@ -111,6 +86,41 @@ export const calculatePublicDelivery = async (req, res) => {
     if (!foundArea && cleanState) {
       foundArea = areas.find(a => a.type === "state" && (a.state?.toLowerCase().trim() === cleanState || a.name?.toLowerCase().trim() === cleanState)) ||
                   deliveryLocations.find(l => l.type === "state" && l.enabled && l.name?.toLowerCase().trim() === cleanState);
+    }
+
+    // Check deliveryMode availability
+    if (deliveryMode === "all") {
+      available = true;
+    } else if (deliveryMode === "state") {
+      if (cleanState && (allowedStates.includes(cleanState) || foundArea || areas.some(a => a.type === "state" && (a.state?.toLowerCase().trim() === cleanState || a.name?.toLowerCase().trim() === cleanState)))) {
+        available = true;
+      }
+    } else if (deliveryMode === "district") {
+      if (cleanDistrict && (foundArea || areas.some(a => a.type === "district" && (a.district?.toLowerCase().trim() === cleanDistrict || a.name?.toLowerCase().trim() === cleanDistrict)))) {
+        available = true;
+      }
+    } else if (deliveryMode === "pincode") {
+      if (cleanPincode && (allowedPincodes.includes(cleanPincode) || foundArea || areas.some(a => a.pincode === cleanPincode))) {
+        available = true;
+      }
+    } else if (deliveryMode === "postOffice") {
+      if (cleanPostOffice && (foundArea || areas.some(a => a.type === "postOffice" && (a.postOffice?.toLowerCase().trim() === cleanPostOffice || a.name?.toLowerCase().trim() === cleanPostOffice)))) {
+        available = true;
+      }
+    } else if (deliveryMode === "locality") {
+      if (cleanLocality && (foundArea || areas.some(a => ["village", "building", "chawl"].includes(a.type) && a.name?.toLowerCase().trim() === cleanLocality))) {
+        available = true;
+      }
+    }
+
+    // If specific DeliveryAreas exist for store, ensure location matches if pincode is specified
+    if (areas.length > 0 && cleanPincode) {
+      const pinAreas = areas.filter(a => a.pincode === cleanPincode);
+      if (pinAreas.length > 0) {
+        if (cleanLocality && !pinAreas.some(a => a.name?.toLowerCase().trim() === cleanLocality)) {
+          available = false;
+        }
+      }
     }
 
     if (foundArea) {
@@ -132,7 +142,9 @@ export const calculatePublicDelivery = async (req, res) => {
       isFreeShipping,
       baseCharge,
       matchedLocationName,
-      message: available ? (isFreeShipping ? "Free shipping applied!" : `Delivery available (₹${matchedCharge})`) : `Delivery not available for this location under ${deliveryMode} mode.`
+      message: available 
+        ? (isFreeShipping ? "Free shipping applied!" : `Delivery available (₹${matchedCharge})`) 
+        : "Pincode is not deliverable"
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
