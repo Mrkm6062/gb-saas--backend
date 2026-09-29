@@ -47,6 +47,11 @@ const deliverySettingsSchema = new mongoose.Schema(
       default: 0,
     },
 
+    minimumOrderLimitThreshold: {
+      type: Number,
+      default: 0,
+    },
+
     // New location-based delivery settings
     deliveryLocations: [
       {

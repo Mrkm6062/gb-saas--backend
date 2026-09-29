@@ -24,8 +24,10 @@ export const getPublicDeliverySettings = async (req, res) => {
         allowedPincodes: [],
         baseCharge: 0,
         freeShippingThreshold: 0,
+        minimumOrderLimitThreshold: 0,
         deliveryLocations: []
       }),
+      minimumOrderLimitThreshold: settings?.minimumOrderLimitThreshold || 0,
       areas: areas || []
     });
   } catch (error) {
@@ -51,6 +53,7 @@ export const calculatePublicDelivery = async (req, res) => {
     const deliveryMode = settings?.deliveryMode || "all";
     const baseCharge = settings?.baseCharge || 0;
     const freeShippingThreshold = settings?.freeShippingThreshold || 0;
+    const minimumOrderLimitThreshold = settings?.minimumOrderLimitThreshold || 0;
     const allowedStates = (settings?.allowedStates || []).map(s => s.toLowerCase().trim());
     const allowedPincodes = (settings?.allowedPincodes || []).map(p => p.trim());
     const deliveryLocations = settings?.deliveryLocations || [];
@@ -141,6 +144,8 @@ export const calculatePublicDelivery = async (req, res) => {
       charge: available ? matchedCharge : 0,
       isFreeShipping,
       baseCharge,
+      freeShippingThreshold,
+      minimumOrderLimitThreshold,
       matchedLocationName,
       message: available 
         ? (isFreeShipping ? "Free shipping applied!" : `Delivery available (₹${matchedCharge})`) 
@@ -198,7 +203,7 @@ export const getDeliverySettings = async (req, res) => {
 
 export const updateDeliverySettings = async (req, res) => {
   try {
-    const { storeId, deliveryMode, allowedStates, allowedPincodes, baseCharge, freeShippingThreshold, deliveryLocations } = req.body;
+    const { storeId, deliveryMode, allowedStates, allowedPincodes, baseCharge, freeShippingThreshold, minimumOrderLimitThreshold, deliveryLocations } = req.body;
 
     if (!storeId) {
       return res.status(400).json({ message: "Store ID is required" });
@@ -213,7 +218,15 @@ export const updateDeliverySettings = async (req, res) => {
 
     const settings = await DeliverySettings.findOneAndUpdate(
       { storeId },
-      { deliveryMode, allowedStates, allowedPincodes, baseCharge, freeShippingThreshold, deliveryLocations },
+      { 
+        deliveryMode, 
+        allowedStates, 
+        allowedPincodes, 
+        baseCharge: Number(baseCharge !== undefined ? baseCharge : 0), 
+        freeShippingThreshold: Number(freeShippingThreshold !== undefined ? freeShippingThreshold : 0), 
+        minimumOrderLimitThreshold: Number(minimumOrderLimitThreshold !== undefined ? minimumOrderLimitThreshold : 0), 
+        deliveryLocations 
+      },
       { new: true, upsert: true }
     );
 

@@ -335,6 +335,16 @@ export const createOrder = async (req, res) => {
 
     const calculatedDiscountAmount = (Number(discountAmount) || 0) + offerDiscount;
     const rawSubtotal = orderItems.reduce((sum, item) => sum + (Number(item.price) * Number(item.qty)), 0);
+
+    // Validate Minimum Order Limit Threshold Securely
+    if (deliverySettings && deliverySettings.minimumOrderLimitThreshold > 0) {
+      if (rawSubtotal < deliverySettings.minimumOrderLimitThreshold) {
+        return res.status(400).json({ 
+          message: `Minimum order amount of ₹${deliverySettings.minimumOrderLimitThreshold} is required to place an order. Please add more products to your cart to reach the threshold (Current: ₹${rawSubtotal}).` 
+        });
+      }
+    }
+
     const calculatedTotalAmount = Math.max(0, rawSubtotal - calculatedDiscountAmount + (Number(shippingCharge) || 0));
 
     const discountDetails = [...offerDiscountResult.details];
