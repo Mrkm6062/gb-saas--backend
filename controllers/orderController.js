@@ -376,11 +376,12 @@ export const createOrder = async (req, res) => {
     });
 
     // Send push notification to subscribed devices for store
+    const storeCode = store.storeId || store._id.toString();
     sendPushToStore(store._id, {
       title: `🎉 New Order #${order._id.toString().slice(-6).toUpperCase()}!`,
       body: `${customerName || "A customer"} placed an order of ₹${calculatedTotalAmount}.`,
       data: {
-        url: `/store/${store._id}/live-orders`,
+        url: `/store/${storeCode}/live-orders`,
         orderId: order._id.toString()
       }
     }).catch(err => console.error("Error triggering push notification:", err.message));

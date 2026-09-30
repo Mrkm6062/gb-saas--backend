@@ -79,9 +79,14 @@ export const sendPushToStore = async (storeId, payload) => {
       return { success: true, subscribersFound: 0, sentCount: 0, failedCount: 0, errors: [] };
     }
 
-    const targetUrl = (payload.data && payload.data.url) 
+    let targetUrl = (payload.data && payload.data.url) 
       ? payload.data.url 
       : `/store/${friendlyStoreId}/live-orders`;
+
+    // Ensure URL uses friendlyStoreId (e.g. GBS006) instead of raw 24-char ObjectId
+    if (friendlyStoreId && targetStoreIdStr && friendlyStoreId !== targetStoreIdStr) {
+      targetUrl = targetUrl.replace(targetStoreIdStr, friendlyStoreId);
+    }
 
     const payloadString = JSON.stringify({
       title: payload.title || "🎉 New Live Order!",
