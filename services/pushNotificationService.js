@@ -1,22 +1,34 @@
 import webpush from "web-push";
 import mongoose from "mongoose";
+import dotenv from "dotenv";
 import PushSubscription from "../models/PushSubscription.js";
 import Store from "../models/Store.js";
 
-const publicVapidKey = process.env.VAPID_PUBLIC_KEY;
-const privateVapidKey = process.env.VAPID_PRIVATE_KEY;
+dotenv.config();
 
-if (publicVapidKey && privateVapidKey) {
+/**
+ * Configure VAPID details dynamically
+ */
+const configureVapid = () => {
+  const publicVapidKey = process.env.VAPID_PUBLIC_KEY;
+  const privateVapidKey = process.env.VAPID_PRIVATE_KEY;
+
+  if (!publicVapidKey || !privateVapidKey) {
+    return false;
+  }
+
   try {
     webpush.setVapidDetails(
       "mailto:support@galibrand.cloud",
       publicVapidKey,
       privateVapidKey
     );
+    return true;
   } catch (err) {
-    console.error("Failed to initialize VAPID details:", err.message);
+    console.error("[WebPush] Failed to initialize VAPID details:", err.message);
+    return false;
   }
-}
+};
 
 /**
  * Send a web push notification to all subscribed devices for a store
@@ -25,9 +37,10 @@ if (publicVapidKey && privateVapidKey) {
  */
 export const sendPushToStore = async (storeId, payload) => {
   try {
-    if (!publicVapidKey || !privateVapidKey) {
-      console.warn("VAPID keys not configured. Skipping push notification.");
-      return;
+    const isVapidReady = configureVapid();
+    if (!isVapidReady) {
+      console.warn("[WebPush] VAPID keys not configured in process.env. Skipping push notification.");
+      return { success: false, reason: "VAPID_KEYS_NOT_CONFIGURED" };
     }
 
     const targetStoreIdStr = storeId ? storeId.toString() : "";
@@ -60,8 +73,10 @@ export const sendPushToStore = async (storeId, payload) => {
       storeId: { $in: Array.from(queryIds) },
     });
 
+    console.log(`[WebPush] Found ${subscriptions.length} active device subscription(s) for store ${targetStoreIdStr}`);
+
     if (!subscriptions || subscriptions.length === 0) {
-      return;
+      return { success: true, subscribersFound: 0, sentCount: 0 };
     }
 
     const targetUrl = (payload.data && payload.data.url) 
@@ -80,6 +95,15 @@ export const sendPushToStore = async (storeId, payload) => {
       },
     });
 
+    // High urgency and 24h TTL ensures FCM delivers immediately when Chrome/device is sleeping
+    const pushOptions = {
+      TTL: 86400,
+      urgency: "high",
+    };
+
+    let sentCount = 0;
+    let failedCount = 0;
+
     const sendPromises = subscriptions.map(async (sub) => {
       try {
         await webpush.sendNotification(
@@ -90,20 +114,32 @@ export const sendPushToStore = async (storeId, payload) => {
               auth: sub.keys.auth,
             },
           },
-          payloadString
+          payloadString,
+          pushOptions
         );
+        sentCount++;
+        console.log(`[WebPush] Successfully sent notification to device: ${sub._id}`);
       } catch (err) {
+        failedCount++;
         // If subscription has expired or is invalid, remove it from DB
         if (err.statusCode === 410 || err.statusCode === 404) {
+          console.log(`[WebPush] Removing expired subscription ${sub._id} (${err.statusCode})`);
           await PushSubscription.deleteOne({ _id: sub._id }).catch(() => {});
         } else {
-          console.error(`Web push error for subscriber ${sub._id}:`, err.message);
+          console.error(`[WebPush] Push delivery error for subscriber ${sub._id}:`, err.message);
         }
       }
     });
 
     await Promise.allSettled(sendPromises);
+    return {
+      success: true,
+      subscribersFound: subscriptions.length,
+      sentCount,
+      failedCount,
+    };
   } catch (error) {
-    console.error("Error in sendPushToStore:", error.message);
+    console.error("[WebPush] Error in sendPushToStore:", error.message);
+    return { success: false, error: error.message };
   }
 };

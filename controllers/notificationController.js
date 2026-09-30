@@ -8,7 +8,10 @@ export const getVapidPublicKey = async (req, res) => {
   try {
     const publicKey = process.env.VAPID_PUBLIC_KEY;
     if (!publicKey) {
-      return res.status(500).json({ success: false, message: "VAPID public key not configured on server" });
+      return res.status(500).json({ 
+        success: false, 
+        message: "VAPID public key not configured in server .env. Please add VAPID_PUBLIC_KEY to .env" 
+      });
     }
     res.json({ success: true, publicKey });
   } catch (error) {
@@ -87,13 +90,31 @@ export const testPushNotification = async (req, res) => {
       return res.status(400).json({ success: false, message: "storeId is required" });
     }
 
-    await sendPushToStore(storeId, {
+    const result = await sendPushToStore(storeId, {
       title: "🔔 Live Orders Test Notification",
       body: "Push notifications are working properly! You will receive instant alerts for new live orders even when the app is closed.",
       data: { url: `/store/${storeId}/live-orders` },
     });
 
-    res.json({ success: true, message: "Test notification sent successfully" });
+    if (result && result.reason === "VAPID_KEYS_NOT_CONFIGURED") {
+      return res.status(500).json({
+        success: false,
+        message: "VAPID keys not configured in VPS .env. Please add VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY to .env and restart server.",
+      });
+    }
+
+    if (result && result.subscribersFound === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No active device subscriptions found for this store. Please click 'Enable Push Alerts' on this device first.",
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Test alert sent to ${result?.sentCount || 0} device(s)!`,
+      details: result 
+    });
   } catch (error) {
     console.error("Error in testPushNotification:", error);
     res.status(500).json({ success: false, message: error.message });
