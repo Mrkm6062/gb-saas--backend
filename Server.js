@@ -68,6 +68,7 @@ import customMenuRoutes from "./routes/customMenuRoutes.js";
 import customAssetRoutes from "./routes/customAssetRoutes.js";
 import trackingSettingsRoutes from "./routes/trackingSettingsRoutes.js";
 import pwaRoutes from "./routes/pwaRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 import Pwa from "./models/Pwa.js";
 
 
@@ -237,6 +238,7 @@ app.use("/api/store-owner/auth/google", googleAuthRoutes);
 app.use("/api/custom-pages", customPageRoutes);
 app.use("/api/custom-menus", customMenuRoutes);
 app.use("/api/custom-assets", customAssetRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 
 // Routes

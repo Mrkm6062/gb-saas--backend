@@ -14,6 +14,7 @@ import { decrypt } from "../utils/crypto.js";
 import Domain from "../models/Domain.js";
 import { storage } from "../gcs.js";
 import { checkIsStoreOpen } from "./storeHoursController.js";
+import { sendPushToStore } from "../services/pushNotificationService.js";
 
 const calculateOfferDiscount = (orderItems, productsInDb) => {
   let totalB1G1Discount = 0;
@@ -373,6 +374,16 @@ export const createOrder = async (req, res) => {
       paymentStatus: "pending",
       orderStatus: "placed"
     });
+
+    // Send push notification to subscribed devices for store
+    sendPushToStore(store._id, {
+      title: `🎉 New Order #${order._id.toString().slice(-6).toUpperCase()}!`,
+      body: `${customerName || "A customer"} placed an order of ₹${calculatedTotalAmount}.`,
+      data: {
+        url: `/store/${store._id}/live-orders`,
+        orderId: order._id.toString()
+      }
+    }).catch(err => console.error("Error triggering push notification:", err.message));
 
     // Deduct stock for each ordered item
     for (const item of orderItems) {
