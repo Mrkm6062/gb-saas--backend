@@ -76,7 +76,7 @@ export const sendPushToStore = async (storeId, payload) => {
     console.log(`[WebPush] Found ${subscriptions.length} active device subscription(s) for store ${targetStoreIdStr}`);
 
     if (!subscriptions || subscriptions.length === 0) {
-      return { success: true, subscribersFound: 0, sentCount: 0 };
+      return { success: true, subscribersFound: 0, sentCount: 0, failedCount: 0, errors: [] };
     }
 
     const targetUrl = (payload.data && payload.data.url) 
@@ -103,6 +103,7 @@ export const sendPushToStore = async (storeId, payload) => {
 
     let sentCount = 0;
     let failedCount = 0;
+    const errors = [];
 
     const sendPromises = subscriptions.map(async (sub) => {
       try {
@@ -121,22 +122,31 @@ export const sendPushToStore = async (storeId, payload) => {
         console.log(`[WebPush] Successfully sent notification to device: ${sub._id}`);
       } catch (err) {
         failedCount++;
-        // If subscription has expired or is invalid, remove it from DB
+        const errDetail = {
+          subscriberId: sub._id.toString(),
+          statusCode: err.statusCode,
+          message: err.message,
+          body: err.body || "",
+        };
+        errors.push(errDetail);
+
+        // If subscription has expired or is invalid (410 Gone / 404 Not Found), remove it from DB
         if (err.statusCode === 410 || err.statusCode === 404) {
           console.log(`[WebPush] Removing expired subscription ${sub._id} (${err.statusCode})`);
           await PushSubscription.deleteOne({ _id: sub._id }).catch(() => {});
         } else {
-          console.error(`[WebPush] Push delivery error for subscriber ${sub._id}:`, err.message);
+          console.error(`[WebPush] Push delivery error for subscriber ${sub._id} (${err.statusCode}):`, err.message, err.body || "");
         }
       }
     });
 
     await Promise.allSettled(sendPromises);
     return {
-      success: true,
+      success: sentCount > 0,
       subscribersFound: subscriptions.length,
       sentCount,
       failedCount,
+      errors,
     };
   } catch (error) {
     console.error("[WebPush] Error in sendPushToStore:", error.message);

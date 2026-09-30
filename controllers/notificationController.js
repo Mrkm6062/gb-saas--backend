@@ -110,6 +110,16 @@ export const testPushNotification = async (req, res) => {
       });
     }
 
+    if (result && result.sentCount === 0 && result.errors && result.errors.length > 0) {
+      const firstErr = result.errors[0];
+      const errorMsg = firstErr.body || firstErr.message || `Error code ${firstErr.statusCode}`;
+      return res.status(500).json({
+        success: false,
+        message: `FCM rejected push (${firstErr.statusCode || 'Failed'}): ${errorMsg}. Please click 'Enable Push Alerts' to refresh device subscription.`,
+        details: result,
+      });
+    }
+
     res.json({ 
       success: true, 
       message: `Test alert sent to ${result?.sentCount || 0} device(s)!`,
