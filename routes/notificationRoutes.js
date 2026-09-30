@@ -1,5 +1,6 @@
 import express from "express";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 import User from "../models/User.js";
 import { parseCookies } from "../utils/cookieHelper.js";
 import {
@@ -25,7 +26,15 @@ const optionalProtect = async (req, res, next) => {
         algorithms: ["HS256"],
       });
       const userId = decoded.sub || decoded.id;
-      req.user = await User.findById(userId).select("-password");
+      if (userId) {
+        const isObjId = mongoose.Types.ObjectId.isValid(userId);
+        req.user = await User.findOne({
+          $or: [
+            ...(isObjId ? [{ _id: userId }] : []),
+            { userId: userId },
+          ],
+        }).select("-password");
+      }
     }
   } catch (err) {
     // Continue without req.user

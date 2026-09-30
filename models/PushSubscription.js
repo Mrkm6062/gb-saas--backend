@@ -3,15 +3,14 @@ import mongoose from "mongoose";
 const pushSubscriptionSchema = new mongoose.Schema(
   {
     storeId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Store",
+      type: String,
       required: true,
       index: true,
     },
     userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String,
       default: null,
+      index: true,
     },
     endpoint: {
       type: String,
@@ -39,5 +38,9 @@ const pushSubscriptionSchema = new mongoose.Schema(
   }
 );
 
-export default mongoose.models.PushSubscription ||
-  mongoose.model("PushSubscription", pushSubscriptionSchema);
+// Delete cached model if it was compiled with previous ObjectId schema
+if (mongoose.models && mongoose.models.PushSubscription) {
+  delete mongoose.models.PushSubscription;
+}
+
+export default mongoose.model("PushSubscription", pushSubscriptionSchema);

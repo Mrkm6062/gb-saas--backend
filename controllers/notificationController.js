@@ -31,13 +31,17 @@ export const subscribe = async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing p256dh or auth keys" });
     }
 
-    const userId = req.user ? (req.user.userId || req.user._id) : null;
+    // Safely extract string userId (e.g. "GBUSER001" or ObjectId string)
+    let userId = null;
+    if (req.user) {
+      userId = req.user.userId || (req.user._id ? req.user._id.toString() : null);
+    }
 
     const savedSub = await PushSubscription.findOneAndUpdate(
       { endpoint },
       {
-        storeId,
-        userId,
+        storeId: String(storeId),
+        userId: userId ? String(userId) : null,
         endpoint,
         keys: {
           p256dh: keys.p256dh,
