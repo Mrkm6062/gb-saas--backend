@@ -69,6 +69,7 @@ import customAssetRoutes from "./routes/customAssetRoutes.js";
 import trackingSettingsRoutes from "./routes/trackingSettingsRoutes.js";
 import pwaRoutes from "./routes/pwaRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import landingContactRoutes from "./routes/landingContactRoutes.js";
 import Pwa from "./models/Pwa.js";
 
 
@@ -239,6 +240,8 @@ app.use("/api/custom-pages", customPageRoutes);
 app.use("/api/custom-menus", customMenuRoutes);
 app.use("/api/custom-assets", customAssetRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/landing-contact", landingContactRoutes);
+app.use("/api/contact", landingContactRoutes);
 
 
 // Routes

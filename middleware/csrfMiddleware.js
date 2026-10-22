@@ -6,14 +6,16 @@ export const csrfProtection = (req, res, next) => {
     return next();
   }
 
-  // Bypass CSRF checks for external webhook endpoints, public auth, and file upload endpoints
+  // Bypass CSRF checks for external webhook endpoints, public auth, contact forms, and file upload endpoints
   if (
     req.path.includes("/webhook") || 
     req.path.includes("/auth/google") || 
     req.path.includes("/send-otp") ||
     req.path.includes("/verify-otp") ||
     req.path.includes("/upload") ||
-    req.path.includes("/custom-assets/upload")
+    req.path.includes("/custom-assets/upload") ||
+    req.path.includes("/landing-contact") ||
+    req.path.includes("/contact")
   ) {
     return next();
   }
