@@ -243,7 +243,7 @@ app.use("/api/custom-assets", customAssetRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/landing-contact", landingContactRoutes);
 app.use("/api/contact", landingContactRoutes);
-app.use("/api/staff", staffRoutes);
+app.use("/api/store-staff", staffRoutes);
 
 
 // Routes

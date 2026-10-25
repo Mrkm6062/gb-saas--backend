@@ -21,6 +21,34 @@ const generateStaffToken = (staff, store) => {
   );
 };
 
+// Helper: Safely find store for owner / superadmin
+const findStoreForOwner = async (storeId, user) => {
+  if (!storeId || !user) return null;
+  const cleanStoreId = String(storeId).trim();
+  const isMongoId = /^[0-9a-fA-F]{24}$/.test(cleanStoreId);
+  const conditions = [{ storeId: cleanStoreId }];
+  if (isMongoId) {
+    conditions.push({ _id: cleanStoreId });
+  }
+
+  const query = { $or: conditions };
+  if (user.role !== "superadmin") {
+    const possibleOwnerIds = [user.userId, user._id?.toString(), String(user._id)].filter(Boolean);
+    query.ownerId = { $in: possibleOwnerIds };
+  }
+
+  return await Store.findOne(query);
+};
+
+// Helper: Verify authorization for a specific staff record
+const isAuthorizedForStaff = (staff, user) => {
+  if (!staff || !user) return false;
+  if (user.role === "superadmin") return true;
+  const storeOwnerId = String(staff.store?.ownerId || staff.store || "");
+  const possibleOwnerIds = [user.userId, user._id?.toString(), String(user._id)].filter(Boolean).map(String);
+  return possibleOwnerIds.includes(storeOwnerId);
+};
+
 // 1. CREATE STAFF (Store Owner)
 export const createStaff = async (req, res) => {
   try {
@@ -30,12 +58,8 @@ export const createStaff = async (req, res) => {
       return res.status(400).json({ message: "Store ID, Name, Staff ID, and Password are required." });
     }
 
-    // Verify store ownership
-    const store = await Store.findOne({
-      $or: [{ _id: storeId }, { storeId: storeId }],
-      ownerId: req.user.userId,
-    });
-
+    // Verify store ownership (store owner or superadmin)
+    const store = await findStoreForOwner(storeId, req.user);
     if (!store) {
       return res.status(403).json({ message: "Store not found or unauthorized access." });
     }
@@ -86,11 +110,7 @@ export const getStaffByStore = async (req, res) => {
       return res.status(400).json({ message: "storeId query parameter is required." });
     }
 
-    const store = await Store.findOne({
-      $or: [{ _id: storeId }, { storeId: storeId }],
-      ownerId: req.user.userId,
-    });
-
+    const store = await findStoreForOwner(storeId, req.user);
     if (!store) {
       return res.status(403).json({ message: "Store not found or unauthorized access." });
     }
@@ -117,7 +137,7 @@ export const updateStaff = async (req, res) => {
     }
 
     // Verify ownership of the store
-    if (String(staff.store.ownerId) !== String(req.user.userId)) {
+    if (!isAuthorizedForStaff(staff, req.user)) {
       return res.status(403).json({ message: "Unauthorized to update staff for this store." });
     }
 
@@ -160,7 +180,7 @@ export const deleteStaff = async (req, res) => {
       return res.status(404).json({ message: "Staff member not found." });
     }
 
-    if (String(staff.store.ownerId) !== String(req.user.userId)) {
+    if (!isAuthorizedForStaff(staff, req.user)) {
       return res.status(403).json({ message: "Unauthorized to delete staff for this store." });
     }
 
@@ -186,13 +206,15 @@ export const loginStaff = async (req, res) => {
 
     if (storeCode && String(storeCode).trim() !== "") {
       const cleanStoreCode = String(storeCode).trim();
-      const storeMatch = await Store.findOne({
-        $or: [
-          { storeId: cleanStoreCode },
-          { _id: cleanStoreCode.match(/^[0-9a-fA-F]{24}$/) ? cleanStoreCode : null },
-          { subdomain: cleanStoreCode.toLowerCase() },
-        ].filter(Boolean),
-      });
+      const isMongoId = /^[0-9a-fA-F]{24}$/.test(cleanStoreCode);
+      const orConditions = [
+        { storeId: cleanStoreCode },
+        { subdomain: cleanStoreCode.toLowerCase() },
+      ];
+      if (isMongoId) {
+        orConditions.push({ _id: cleanStoreCode });
+      }
+      const storeMatch = await Store.findOne({ $or: orConditions });
 
       if (storeMatch) {
         query.store = storeMatch._id;
