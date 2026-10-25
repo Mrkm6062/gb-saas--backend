@@ -290,7 +290,11 @@ export const createOrder = async (req, res) => {
       couponCode,
       discountAmount,
       shippingCharge,
-      paymentMethod
+      paymentMethod,
+      orderSource,
+      orderType,
+      orderBy,
+      tableNumber
     } = req.body;
 
     if (!req.store) {
@@ -314,17 +318,40 @@ export const createOrder = async (req, res) => {
       });
     }
     
-    // Validate Delivery Rules Securely on the Backend
-    const deliverySettings = await DeliverySettings.findOne({ storeId: store._id });
-    if (deliverySettings) {
-      if (deliverySettings.deliveryMode === 'state') {
-        const allowed = deliverySettings.allowedStates.map(s => s.toLowerCase());
-        if (!allowed.includes((address.state || '').toLowerCase().trim())) {
-          return res.status(400).json({ message: `Sorry, we do not deliver to ${address.state} at the moment.` });
-        }
-      } else if (deliverySettings.deliveryMode === 'pincode') {
-        if (!deliverySettings.allowedPincodes.includes((address.pincode || '').trim())) {
-          return res.status(400).json({ message: `Sorry, we do not deliver to pincode ${address.pincode} at the moment.` });
+    // Resolve restaurant ordering parameters
+    const resolvedOrderSource = (orderSource || "web").toLowerCase();
+    let resolvedOrderType = orderType;
+    if (!resolvedOrderType) {
+      resolvedOrderType = resolvedOrderSource === "web" ? "delivery" : "Dine-in";
+    } else {
+      resolvedOrderType = /dine/i.test(resolvedOrderType) ? "Dine-in" : "delivery";
+    }
+
+    const resolvedTableNumber = tableNumber !== undefined && tableNumber !== null && String(tableNumber).trim() !== ""
+      ? String(tableNumber).trim()
+      : "0";
+
+    let resolvedOrderBy = orderBy || "";
+    if (resolvedOrderSource === "counter" && !resolvedOrderBy) {
+      resolvedOrderBy = "counter";
+    }
+
+    const isDineIn = resolvedOrderType === "Dine-in";
+    
+    // Validate Delivery Rules Securely on the Backend (Only for delivery orders)
+    let deliverySettings = null;
+    if (!isDineIn) {
+      deliverySettings = await DeliverySettings.findOne({ storeId: store._id });
+      if (deliverySettings) {
+        if (deliverySettings.deliveryMode === 'state') {
+          const allowed = deliverySettings.allowedStates.map(s => s.toLowerCase());
+          if (!allowed.includes((address?.state || '').toLowerCase().trim())) {
+            return res.status(400).json({ message: `Sorry, we do not deliver to ${address?.state} at the moment.` });
+          }
+        } else if (deliverySettings.deliveryMode === 'pincode') {
+          if (!deliverySettings.allowedPincodes.includes((address?.pincode || '').trim())) {
+            return res.status(400).json({ message: `Sorry, we do not deliver to pincode ${address?.pincode} at the moment.` });
+          }
         }
       }
     }
@@ -337,8 +364,8 @@ export const createOrder = async (req, res) => {
     const calculatedDiscountAmount = (Number(discountAmount) || 0) + offerDiscount;
     const rawSubtotal = orderItems.reduce((sum, item) => sum + (Number(item.price) * Number(item.qty)), 0);
 
-    // Validate Minimum Order Limit Threshold Securely
-    if (deliverySettings && deliverySettings.minimumOrderLimitThreshold > 0) {
+    // Validate Minimum Order Limit Threshold Securely (delivery only)
+    if (!isDineIn && deliverySettings && deliverySettings.minimumOrderLimitThreshold > 0) {
       if (rawSubtotal < deliverySettings.minimumOrderLimitThreshold) {
         return res.status(400).json({ 
           message: `Minimum order amount of ₹${deliverySettings.minimumOrderLimitThreshold} is required to place an order. Please add more products to your cart to reach the threshold (Current: ₹${rawSubtotal}).` 
@@ -346,7 +373,8 @@ export const createOrder = async (req, res) => {
       }
     }
 
-    const calculatedTotalAmount = Math.max(0, rawSubtotal - calculatedDiscountAmount + (Number(shippingCharge) || 0));
+    const resolvedShippingCharge = isDineIn ? 0 : (Number(shippingCharge) || 0);
+    const calculatedTotalAmount = Math.max(0, rawSubtotal - calculatedDiscountAmount + resolvedShippingCharge);
 
     const discountDetails = [...offerDiscountResult.details];
     if (couponCode && (Number(discountAmount) || 0) > 0) {
@@ -357,19 +385,33 @@ export const createOrder = async (req, res) => {
       });
     }
 
+    const resolvedAddress = isDineIn ? {
+      addressLine1: address?.addressLine1 || `Dine-in (Table ${resolvedTableNumber})`,
+      landmark: address?.landmark || `Table ${resolvedTableNumber}`,
+      city: address?.city || store.locationAddress || "Restaurant",
+      state: address?.state || "",
+      pincode: address?.pincode || "000000",
+      mobileNumber: customerPhone || address?.mobileNumber || "",
+      alternateNumber: address?.alternateNumber || ""
+    } : address;
+
     const order = await Order.create({
       store: store._id,
       customerName,
       customerEmail,
       customerPhone,
-      address,
+      address: resolvedAddress,
       orderItems,
       totalAmount: calculatedTotalAmount,
       couponCode,
       discountAmount: calculatedDiscountAmount,
       discountDetails,
-      shippingCharge,
+      shippingCharge: resolvedShippingCharge,
       paymentMethod: paymentMethod || 'cod',
+      orderSource: resolvedOrderSource,
+      orderType: resolvedOrderType,
+      orderBy: resolvedOrderBy,
+      tableNumber: resolvedTableNumber,
       WhasAppOrder: paymentMethod === 'whatsapp',
       paymentStatus: "pending",
       orderStatus: "placed"
@@ -377,9 +419,10 @@ export const createOrder = async (req, res) => {
 
     // Send push notification to subscribed devices for store
     const storeCode = store.storeId || store._id.toString();
+    const orderTypeLabel = isDineIn ? `[Dine-in Table ${resolvedTableNumber}]` : '[Delivery]';
     sendPushToStore(store._id, {
-      title: `🎉 New Order #${order._id.toString().slice(-6).toUpperCase()}!`,
-      body: `${customerName || "A customer"} placed an order of ₹${calculatedTotalAmount}.`,
+      title: `🎉 New Order #${order._id.toString().slice(-6).toUpperCase()} ${orderTypeLabel}`,
+      body: `${customerName || "A customer"} placed an order of ₹${calculatedTotalAmount}.${isDineIn ? ` Table: ${resolvedTableNumber}` : ''}`,
       data: {
         url: `/store/${storeCode}/live-orders`,
         orderId: order._id.toString()
@@ -577,6 +620,10 @@ export const getPublicOrder = async (req, res) => {
       customerName: order.customerName, // Name only, no phone/email for privacy
       store: order.store,
       paymentMethod: order.paymentMethod,
+      orderSource: order.orderSource,
+      orderType: order.orderType,
+      orderBy: order.orderBy,
+      tableNumber: order.tableNumber,
       WhasAppOrder: order.WhasAppOrder,
       ShippingMethod: order.ShippingMethod,
       ShippingTrackingNumber: order.ShippingTrackingNumber,

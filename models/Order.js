@@ -96,6 +96,22 @@ const orderSchema = new mongoose.Schema(
       type: String,
       default: "placed", // placed / shipped / delivered /returned / cancelled
     },
+    orderSource: {
+      type: String,
+      default: "web", // web / staff / counter
+    },
+    orderType: {
+      type: String,
+      default: "delivery", // Dine-in / delivery
+    },
+    orderBy: {
+      type: String,
+      default: "", // if staff then their ID, if counter then counter
+    },
+    tableNumber: {
+      type: String,
+      default: "0",
+    },
     orderConfirmed: {
       type: Boolean,
       default: false

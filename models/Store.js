@@ -40,6 +40,9 @@ const storeSchema = new mongoose.Schema({
   supportEmail: { type: String, default: "" },
   locationAddress: { type: String, default: "" },
   mapLocation: { type: String, default: "" },
+  tables: { type: [String], default: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"] },
+  isRestaurant: { type: Boolean, default: false },
+  dineInEnabled: { type: Boolean, default: true },
   isDeleted: { type: Boolean, default: false },
   deletedAt: { type: Date },
   seoSettings: {

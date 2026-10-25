@@ -197,7 +197,7 @@ export const createStore = async (req, res) => {
 export const updateStore = async (req, res) => {
   try {
     const { id } = req.params; // Can be MongoDB _id or custom storeId (e.g., GBS001)
-    const { storeName, websiteTitle, logo, favicon, banner, storeType, theme, supportPhoneNumbers, supportEmail, locationAddress, mapLocation, whatsappNumber, whatsappSupportEnabled } = req.body;
+    const { storeName, websiteTitle, logo, favicon, banner, storeType, theme, supportPhoneNumbers, supportEmail, locationAddress, mapLocation, whatsappNumber, whatsappSupportEnabled, tables, isRestaurant, dineInEnabled } = req.body;
 
     // Ensure the store belongs to the authenticated user
     const query = { ownerId: req.user.userId };
@@ -236,6 +236,15 @@ export const updateStore = async (req, res) => {
     if (mapLocation !== undefined) store.mapLocation = mapLocation;
     if (whatsappNumber !== undefined) store.whatsappNumber = whatsappNumber;
     if (whatsappSupportEnabled !== undefined) store.whatsappSupportEnabled = whatsappSupportEnabled;
+    if (tables !== undefined) {
+      if (Array.isArray(tables)) {
+        store.tables = tables.map(t => String(t).trim()).filter(Boolean);
+      } else if (typeof tables === 'string') {
+        store.tables = tables.split(',').map(t => t.trim()).filter(Boolean);
+      }
+    }
+    if (isRestaurant !== undefined) store.isRestaurant = Boolean(isRestaurant);
+    if (dineInEnabled !== undefined) store.dineInEnabled = Boolean(dineInEnabled);
 
     await store.save();
 
@@ -470,6 +479,12 @@ export const getStoreData = async (req, res) => {
       };
     } else {
       storeObj.pwa = { enabled: false };
+    }
+
+    const isRestaurantType = Boolean(storeObj.isRestaurant || (storeObj.storeType && /restaurant|cafe|food|dine|bistro|dhaba|eatery/i.test(storeObj.storeType)));
+    storeObj.isRestaurant = isRestaurantType;
+    if (!storeObj.tables || !Array.isArray(storeObj.tables) || storeObj.tables.length === 0) {
+      storeObj.tables = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
     }
 
     res.json(storeObj);
