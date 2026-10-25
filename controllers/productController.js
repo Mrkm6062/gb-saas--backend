@@ -6,7 +6,7 @@ import Review from "../models/Review.js";
 export const createProduct = async (req, res) => {
   try {
     const { 
-      name, storeId, description, category, foodtype, subCategory, Brand, brand, discount,
+      name, storeId, description, category, foodtype, foodType, subCategory, Brand, brand, discount,
       images, variants, basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable, allowCustomText, customizableArea,
       price, stock, variantType, // Legacy fallbacks
       keyFeaturesEnabled, specificationsEnabled, keyFeatures, specifications,
@@ -56,7 +56,8 @@ export const createProduct = async (req, res) => {
       slug,
       description,
       category,
-      foodtype,
+      foodtype: foodtype || foodType || "",
+      foodType: foodtype || foodType || "",
       subCategory,
       Brand: Brand || brand || "",
       images: images || [],
@@ -161,7 +162,7 @@ export const updateProduct = async (req, res) => {
     }
 
     const { 
-      name, description, category, foodtype, subCategory, Brand, brand, discount, images, variants, 
+      name, description, category, foodtype, foodType, subCategory, Brand, brand, discount, images, variants, 
       basePrice, unitType, tags, totalStock, isActive, seo, isCustomizable, allowCustomText, customizableArea,
       price, stock, variantType, // Legacy fallbacks
       keyFeaturesEnabled, specificationsEnabled, keyFeatures, specifications,
@@ -171,7 +172,11 @@ export const updateProduct = async (req, res) => {
     if (name !== undefined) product.name = name;
     if (description !== undefined) product.description = description;
     if (category !== undefined) product.category = category;
-    if (foodtype !== undefined) product.foodtype = foodtype;
+    if (foodtype !== undefined || foodType !== undefined) {
+      const ft = foodtype !== undefined ? foodtype : foodType;
+      product.foodtype = ft;
+      product.foodType = ft;
+    }
     if (subCategory !== undefined) product.subCategory = subCategory;
     if (Brand !== undefined) product.Brand = Brand;
     else if (brand !== undefined) product.Brand = brand;
