@@ -1,6 +1,8 @@
 import Staff from "../models/Staff.js";
 import Store from "../models/Store.js";
 import Order from "../models/Order.js";
+import Product from "../models/Product.js";
+import Category from "../models/Category.js";
 import StoreAlerts from "../models/StoreAlerts.js";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
@@ -425,6 +427,94 @@ export const sendDigitalBillEmail = async (req, res) => {
 
     res.json({ success: true, message: `Digital bill invoice sent successfully to ${customerEmail}!` });
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 7. GET POS CATALOG (Products & Categories for Store Counter)
+export const getPosCatalog = async (req, res) => {
+  try {
+    const { storeId } = req.query;
+
+    if (!storeId) {
+      return res.status(400).json({ message: "storeId query parameter is required." });
+    }
+
+    const cleanStoreId = String(storeId).trim();
+    const isMongoId = /^[0-9a-fA-F]{24}$/.test(cleanStoreId);
+    const conditions = [{ storeId: cleanStoreId }];
+    if (isMongoId) {
+      conditions.push({ _id: cleanStoreId });
+    }
+
+    const store = await Store.findOne({ $or: conditions });
+    if (!store) {
+      return res.status(404).json({ message: "Store not found." });
+    }
+
+    // Fetch products belonging to this store
+    const products = await Product.find({
+      storeId: store._id,
+      isActive: { $ne: false },
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Fetch categories belonging to this store
+    const categories = await Category.find({
+      store: store._id,
+      status: { $ne: "inactive" },
+    })
+      .sort({ order: 1, name: 1 })
+      .lean();
+
+    const categoryMap = {};
+    categories.forEach((c) => {
+      categoryMap[c._id.toString()] = c.name;
+    });
+
+    const formattedProducts = products.map((p) => {
+      const displayPrice = Number(p.price) || Number(p.basePrice) || (p.variants && p.variants[0]?.price) || 0;
+      let imgList = [];
+      if (Array.isArray(p.images) && p.images.length > 0) {
+        imgList = p.images;
+      } else if (p.variants && p.variants.length > 0) {
+        for (const v of p.variants) {
+          if (Array.isArray(v.images) && v.images.length > 0) {
+            imgList = v.images.map((img) => (typeof img === "object" ? img.url : img)).filter(Boolean);
+            if (imgList.length > 0) break;
+          }
+        }
+      }
+
+      let catName = "";
+      if (p.category) {
+        catName = categoryMap[p.category.toString()] || p.category;
+      }
+
+      return {
+        ...p,
+        price: displayPrice,
+        images: imgList,
+        categoryName: catName,
+      };
+    });
+
+    res.json({
+      success: true,
+      store: {
+        _id: store._id,
+        storeId: store.storeId,
+        storeName: store.storeName,
+        logo: store.logo,
+        tables: store.tables || ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+        isRestaurant: store.isRestaurant,
+      },
+      products: formattedProducts,
+      categories,
+    });
+  } catch (error) {
+    console.error("Error fetching POS catalog:", error);
     res.status(500).json({ message: error.message });
   }
 };

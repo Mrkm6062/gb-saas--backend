@@ -299,29 +299,40 @@ export const createOrder = async (req, res) => {
       orderStatus
     } = req.body;
 
-    if (!req.store) {
+    let store = req.store;
+    if (!store && (req.body.storeId || req.headers['x-store-id'])) {
+      const targetStoreId = String(req.body.storeId || req.headers['x-store-id']).trim();
+      const isMongoId = /^[0-9a-fA-F]{24}$/.test(targetStoreId);
+      const orConditions = [{ storeId: targetStoreId }];
+      if (isMongoId) {
+        orConditions.push({ _id: targetStoreId });
+      }
+      store = await Store.findOne({ $or: orConditions });
+    }
+
+    if (!store) {
       return res.status(400).json({ message: "Store context missing. Make sure you are ordering from a valid store domain." });
     }
 
-    const store = req.store;
-
-    const isPlanExpired = store.subscriptionStatus === 'expired' || 
-                          (store.planExpiryDate && new Date() > new Date(store.planExpiryDate));
-
-    if (isPlanExpired) {
-      return res.status(403).json({ message: "We are temporarily closed and not accepting orders because our store subscription has expired." });
-    }
-
-    // Validate if store is open
-    const storeOpenStatus = await checkIsStoreOpen(store._id);
-    if (!storeOpenStatus.isOpen) {
-      return res.status(400).json({ 
-        message: storeOpenStatus.reason || "We are currently closed and not accepting orders. Please try again during our store hours." 
-      });
-    }
-    
     // Resolve restaurant ordering parameters
     const resolvedOrderSource = (orderSource || "web").toLowerCase();
+
+    if (resolvedOrderSource !== "counter") {
+      const isPlanExpired = store.subscriptionStatus === 'expired' || 
+                            (store.planExpiryDate && new Date() > new Date(store.planExpiryDate));
+
+      if (isPlanExpired) {
+        return res.status(403).json({ message: "We are temporarily closed and not accepting orders because our store subscription has expired." });
+      }
+
+      // Validate if store is open
+      const storeOpenStatus = await checkIsStoreOpen(store._id);
+      if (!storeOpenStatus.isOpen) {
+        return res.status(400).json({ 
+          message: storeOpenStatus.reason || "We are currently closed and not accepting orders. Please try again during our store hours." 
+        });
+      }
+    }
     let resolvedOrderType = orderType;
     if (!resolvedOrderType) {
       resolvedOrderType = resolvedOrderSource === "web" ? "delivery" : "Dine-in";

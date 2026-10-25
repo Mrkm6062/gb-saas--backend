@@ -6,6 +6,7 @@ import {
   deleteStaff,
   loginStaff,
   sendDigitalBillEmail,
+  getPosCatalog,
 } from "../controllers/staffController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -13,6 +14,9 @@ const router = express.Router();
 
 // Public route for staff to log in at Counter Sale POS
 router.post("/login", loginStaff);
+
+// Public route for Counter POS catalog (products & categories)
+router.get("/pos-catalog", getPosCatalog);
 
 // Route for sending digital bill via email
 router.post("/send-digital-bill", sendDigitalBillEmail);
