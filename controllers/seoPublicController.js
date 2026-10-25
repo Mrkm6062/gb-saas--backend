@@ -5,27 +5,35 @@ import Policy from "../models/Policy.js";
 
 // Helper to resolve store canonical or fallback domain
 const resolveStoreDomain = async (store, req) => {
-  if (store.seoSettings?.canonicalDomain) {
-    let domain = store.seoSettings.canonicalDomain.trim();
-    if (!/^https?:\/\//i.test(domain)) {
-      domain = `https://${domain}`;
+  const sanitize = (str) => {
+    if (!str) return '';
+    let d = String(str).trim();
+    while (d.toLowerCase().includes('.galibrand.cloud.galibrand.cloud')) {
+      d = d.replace(/\.galibrand\.cloud\.galibrand\.cloud/gi, '.galibrand.cloud');
     }
-    return domain.replace(/\/+$/, ''); // Remove trailing slashes
+    if (!/^https?:\/\//i.test(d)) {
+      d = `https://${d}`;
+    }
+    return d.replace(/\/+$/, '');
+  };
+
+  if (store.seoSettings?.canonicalDomain || store.canonicalDomain) {
+    return sanitize(store.seoSettings?.canonicalDomain || store.canonicalDomain);
   }
 
   // Fallback to custom domain record
   const domainRecord = await Domain.findOne({ storeId: store._id, status: "connected" });
   if (domainRecord) {
-    return `https://${domainRecord.domain}`;
+    return sanitize(domainRecord.domain);
   }
 
   // Fallback to subdomain
   if (store.subdomain) {
-    return `https://${store.subdomain}`;
+    return sanitize(store.subdomain);
   }
 
   if (store.storeSlug) {
-    return `https://${store.storeSlug}.galibrand.cloud`;
+    return sanitize(`${store.storeSlug}.galibrand.cloud`);
   }
 
   // Final fallback to request host

@@ -459,7 +459,10 @@ export const getStoreBySubdomain = async (req, res) => {
       ? storeObj.metaKeywords
       : (storeObj.seoSettings?.metaKeywords || []);
 
-    const resolvedCanonicalDomain = storeObj.canonicalDomain || storeObj.seoSettings?.canonicalDomain || "";
+    let resolvedCanonicalDomain = (storeObj.canonicalDomain || storeObj.seoSettings?.canonicalDomain || "").trim();
+    while (resolvedCanonicalDomain.toLowerCase().includes('.galibrand.cloud.galibrand.cloud')) {
+      resolvedCanonicalDomain = resolvedCanonicalDomain.replace(/\.galibrand\.cloud\.galibrand\.cloud/gi, '.galibrand.cloud');
+    }
 
     storeObj.metaKeywords = resolvedMetaKeywords;
     storeObj.canonicalDomain = resolvedCanonicalDomain;

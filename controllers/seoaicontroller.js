@@ -1,5 +1,30 @@
 import Store from "../models/Store.js";
 
+// Helper to normalize and strip duplicate .galibrand.cloud
+const sanitizeStoreDomain = (rawDomain, subdomain) => {
+  let d = (rawDomain || '').trim();
+  if (d) {
+    while (d.toLowerCase().includes('.galibrand.cloud.galibrand.cloud')) {
+      d = d.replace(/\.galibrand\.cloud\.galibrand\.cloud/gi, '.galibrand.cloud');
+    }
+    if (!/^https?:\/\//i.test(d)) {
+      d = `https://${d}`;
+    }
+    return d.replace(/\/+$/, '');
+  }
+  if (subdomain) {
+    let sub = String(subdomain).trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+    while (sub.toLowerCase().includes('.galibrand.cloud.galibrand.cloud')) {
+      sub = sub.replace(/\.galibrand\.cloud\.galibrand\.cloud/gi, '.galibrand.cloud');
+    }
+    if (sub.includes('.')) {
+      return `https://${sub}`;
+    }
+    return `https://${sub}.galibrand.cloud`;
+  }
+  return '';
+};
+
 // GET /api/seo-settings/:storeId
 export const getSeoSettings = async (req, res) => {
   try {
@@ -26,7 +51,7 @@ export const getSeoSettings = async (req, res) => {
     const metaKeywords = (seoSettings.metaKeywords && Array.isArray(seoSettings.metaKeywords) && seoSettings.metaKeywords.length > 0)
       ? seoSettings.metaKeywords
       : (store.metaKeywords || []);
-    const canonicalDomain = seoSettings.canonicalDomain || store.canonicalDomain || (store.subdomain ? `https://${store.subdomain}.galibrand.cloud` : '');
+    const canonicalDomain = sanitizeStoreDomain(seoSettings.canonicalDomain || store.canonicalDomain, store.subdomain);
 
     res.json({
       ...seoSettings,
@@ -120,7 +145,7 @@ export const updateSeoSettings = async (req, res) => {
       store.metaKeywords = keywordsArr;
     }
     if (canonicalDomain !== undefined) {
-      const cleanCanonical = String(canonicalDomain || '').trim();
+      const cleanCanonical = sanitizeStoreDomain(canonicalDomain, store.subdomain);
       store.seoSettings.canonicalDomain = cleanCanonical;
       store.canonicalDomain = cleanCanonical;
     }
