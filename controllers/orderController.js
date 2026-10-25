@@ -294,7 +294,9 @@ export const createOrder = async (req, res) => {
       orderSource,
       orderType,
       orderBy,
-      tableNumber
+      tableNumber,
+      paymentStatus,
+      orderStatus
     } = req.body;
 
     if (!req.store) {
@@ -413,8 +415,10 @@ export const createOrder = async (req, res) => {
       orderBy: resolvedOrderBy,
       tableNumber: resolvedTableNumber,
       WhasAppOrder: paymentMethod === 'whatsapp',
-      paymentStatus: "pending",
-      orderStatus: "placed"
+      paymentStatus: paymentStatus || (resolvedOrderSource === "counter" ? "paid" : "pending"),
+      orderStatus: orderStatus || (resolvedOrderSource === "counter" ? "delivered" : "placed"),
+      deliveredAt: (orderStatus === "delivered" || resolvedOrderSource === "counter") ? new Date() : null,
+      orderConfirmed: resolvedOrderSource === "counter" ? true : false
     });
 
     // Send push notification to subscribed devices for store
