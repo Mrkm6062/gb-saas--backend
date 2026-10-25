@@ -197,7 +197,7 @@ export const createStore = async (req, res) => {
 export const updateStore = async (req, res) => {
   try {
     const { id } = req.params; // Can be MongoDB _id or custom storeId (e.g., GBS001)
-    const { storeName, websiteTitle, logo, favicon, banner, storeType, theme, supportPhoneNumbers, supportEmail, locationAddress, mapLocation, whatsappNumber, whatsappSupportEnabled, tables, isRestaurant, dineInEnabled } = req.body;
+    const { storeName, websiteTitle, logo, favicon, banner, storeType, theme, supportPhoneNumbers, supportEmail, locationAddress, mapLocation, whatsappNumber, whatsappSupportEnabled, tables, isRestaurant, dineInEnabled, metaDescription, metaKeywords, canonicalDomain } = req.body;
 
     // Ensure the store belongs to the authenticated user
     const query = { ownerId: req.user.userId };
@@ -245,6 +245,17 @@ export const updateStore = async (req, res) => {
     }
     if (isRestaurant !== undefined) store.isRestaurant = Boolean(isRestaurant);
     if (dineInEnabled !== undefined) store.dineInEnabled = Boolean(dineInEnabled);
+    if (metaDescription !== undefined) store.metaDescription = metaDescription;
+    if (metaKeywords !== undefined) {
+      store.metaKeywords = Array.isArray(metaKeywords) ? metaKeywords : (typeof metaKeywords === 'string' ? metaKeywords.split(',').map(s => s.trim()).filter(Boolean) : []);
+      if (!store.seoSettings) store.seoSettings = {};
+      store.seoSettings.metaKeywords = store.metaKeywords;
+    }
+    if (canonicalDomain !== undefined) {
+      store.canonicalDomain = String(canonicalDomain || '').trim();
+      if (!store.seoSettings) store.seoSettings = {};
+      store.seoSettings.canonicalDomain = store.canonicalDomain;
+    }
 
     await store.save();
 
@@ -443,7 +454,23 @@ export const getStoreBySubdomain = async (req, res) => {
       return res.status(404).json({ message: "Store not found" });
     }
 
-    res.json(store);
+    let storeObj = store.toObject ? store.toObject() : { ...store };
+    const resolvedMetaKeywords = (storeObj.metaKeywords && Array.isArray(storeObj.metaKeywords) && storeObj.metaKeywords.length > 0)
+      ? storeObj.metaKeywords
+      : (storeObj.seoSettings?.metaKeywords || []);
+
+    const resolvedCanonicalDomain = storeObj.canonicalDomain || storeObj.seoSettings?.canonicalDomain || "";
+
+    storeObj.metaKeywords = resolvedMetaKeywords;
+    storeObj.canonicalDomain = resolvedCanonicalDomain;
+
+    if (!storeObj.seoSettings) {
+      storeObj.seoSettings = {};
+    }
+    storeObj.seoSettings.metaKeywords = resolvedMetaKeywords;
+    storeObj.seoSettings.canonicalDomain = resolvedCanonicalDomain;
+
+    res.json(storeObj);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -457,6 +484,21 @@ export const getStoreData = async (req, res) => {
     }
     
     let storeObj = req.store.toObject ? req.store.toObject() : { ...req.store };
+
+    const resolvedMetaKeywords = (storeObj.metaKeywords && Array.isArray(storeObj.metaKeywords) && storeObj.metaKeywords.length > 0)
+      ? storeObj.metaKeywords
+      : (storeObj.seoSettings?.metaKeywords || []);
+
+    const resolvedCanonicalDomain = storeObj.canonicalDomain || storeObj.seoSettings?.canonicalDomain || "";
+
+    storeObj.metaKeywords = resolvedMetaKeywords;
+    storeObj.canonicalDomain = resolvedCanonicalDomain;
+
+    if (!storeObj.seoSettings) {
+      storeObj.seoSettings = {};
+    }
+    storeObj.seoSettings.metaKeywords = resolvedMetaKeywords;
+    storeObj.seoSettings.canonicalDomain = resolvedCanonicalDomain;
     
     if (storeObj.theme) {
       const themeDoc = await Theme.findOne({ themeId: storeObj.theme });

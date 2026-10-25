@@ -25,13 +25,27 @@ router.get("/tenant/info", subdomainMiddleware, storeResolver, (req, res) => {
     _id, storeId, storeName, logo, banner, theme, favicon, websiteTitle, 
     metaDescription, subdomain, supportPhoneNumbers, whatsappNumber, 
     whatsappSupportEnabled, supportEmail, locationAddress, mapLocation,
-    isRestaurant, tables, dineInEnabled, storeType
+    isRestaurant, tables, dineInEnabled, storeType,
+    metaKeywords, canonicalDomain, seoSettings
   } = req.store;
+
+  const resolvedMetaKeywords = (metaKeywords && Array.isArray(metaKeywords) && metaKeywords.length > 0)
+    ? metaKeywords
+    : (seoSettings?.metaKeywords || []);
+
+  const resolvedCanonicalDomain = canonicalDomain || seoSettings?.canonicalDomain || "";
+
   res.json({ 
     _id, storeId, name: storeName, logo, banner, theme, favicon, websiteTitle, 
     metaDescription, subdomain, supportPhoneNumbers, whatsappNumber, 
     whatsappSupportEnabled, supportEmail, locationAddress, mapLocation,
-    isRestaurant, tables, dineInEnabled, storeType
+    isRestaurant, tables, dineInEnabled, storeType,
+    metaKeywords: resolvedMetaKeywords,
+    canonicalDomain: resolvedCanonicalDomain,
+    seoSettings: seoSettings || {
+      metaKeywords: resolvedMetaKeywords,
+      canonicalDomain: resolvedCanonicalDomain
+    }
   });
 });
 

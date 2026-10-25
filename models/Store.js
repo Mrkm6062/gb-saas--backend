@@ -9,6 +9,8 @@ const storeSchema = new mongoose.Schema({
   subdomain: { type: String },
   storeType: { type: String },
   metaDescription: { type: String },
+  metaKeywords: { type: [String], default: [] },
+  canonicalDomain: { type: String, default: "" },
   status: { type: String, default: "active" },
   subscriptionStatus: { type: String, enum: ['active', 'expired', 'trial'], default: 'trial' },
   planId: { type: mongoose.Schema.Types.ObjectId, ref: "Plan" },
@@ -105,22 +107,6 @@ const storeSchema = new mongoose.Schema({
     blockApplebotExtended: {
       type: Boolean,
       default: false
-    },
-    metaTitle: {
-      type: String,
-      default: ''
-    },
-    metaDescription: {
-      type: String,
-      default: ''
-    },
-    metaKeywords: {
-      type: [String],
-      default: []
-    },
-    canonicalDomain: {
-      type: String,
-      default: ''
     },
     customRobotsContent: {
       type: String,

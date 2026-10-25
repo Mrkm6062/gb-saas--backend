@@ -18,8 +18,25 @@ export const getSeoSettings = async (req, res) => {
       return res.status(404).json({ message: "Store not found or unauthorized" });
     }
 
-    // Return current seoSettings, or empty object if not set (will fall back to schema defaults)
-    res.json(store.seoSettings || {});
+    const seoSettings = store.seoSettings ? (store.seoSettings.toObject ? store.seoSettings.toObject() : { ...store.seoSettings }) : {};
+
+    // Prioritize and resolve SEO fields from websiteTitle, metaDescription, metaKeywords, and canonicalDomain
+    const metaTitle = seoSettings.metaTitle || store.websiteTitle || store.storeName || '';
+    const metaDescription = seoSettings.metaDescription || store.metaDescription || '';
+    const metaKeywords = (seoSettings.metaKeywords && Array.isArray(seoSettings.metaKeywords) && seoSettings.metaKeywords.length > 0)
+      ? seoSettings.metaKeywords
+      : (store.metaKeywords || []);
+    const canonicalDomain = seoSettings.canonicalDomain || store.canonicalDomain || (store.subdomain ? `https://${store.subdomain}.galibrand.cloud` : '');
+
+    res.json({
+      ...seoSettings,
+      metaTitle,
+      websiteTitle: store.websiteTitle || store.storeName || '',
+      storeName: store.storeName || '',
+      metaDescription,
+      metaKeywords,
+      canonicalDomain
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -85,16 +102,41 @@ export const updateSeoSettings = async (req, res) => {
     if (blockMetaExternalAgent !== undefined) store.seoSettings.blockMetaExternalAgent = blockMetaExternalAgent;
     if (blockAmazonBot !== undefined) store.seoSettings.blockAmazonBot = blockAmazonBot;
     if (blockApplebotExtended !== undefined) store.seoSettings.blockApplebotExtended = blockApplebotExtended;
-    if (metaTitle !== undefined) store.seoSettings.metaTitle = metaTitle;
-    if (metaDescription !== undefined) store.seoSettings.metaDescription = metaDescription;
-    if (metaKeywords !== undefined) store.seoSettings.metaKeywords = metaKeywords;
-    if (canonicalDomain !== undefined) store.seoSettings.canonicalDomain = canonicalDomain;
+    
+    // Update both seoSettings and Store top-level fields
+    if (metaTitle !== undefined) {
+      store.seoSettings.metaTitle = metaTitle;
+      store.websiteTitle = metaTitle;
+    }
+    if (metaDescription !== undefined) {
+      store.seoSettings.metaDescription = metaDescription;
+      store.metaDescription = metaDescription;
+    }
+    if (metaKeywords !== undefined) {
+      const keywordsArr = Array.isArray(metaKeywords) 
+        ? metaKeywords 
+        : (typeof metaKeywords === 'string' ? metaKeywords.split(',').map(k => k.trim()).filter(Boolean) : []);
+      store.seoSettings.metaKeywords = keywordsArr;
+      store.metaKeywords = keywordsArr;
+    }
+    if (canonicalDomain !== undefined) {
+      const cleanCanonical = String(canonicalDomain || '').trim();
+      store.seoSettings.canonicalDomain = cleanCanonical;
+      store.canonicalDomain = cleanCanonical;
+    }
     if (customRobotsContent !== undefined) store.seoSettings.customRobotsContent = customRobotsContent;
     if (customLlmsContent !== undefined) store.seoSettings.customLlmsContent = customLlmsContent;
 
     await store.save();
 
-    res.json({ message: "SEO & AI settings updated successfully!", seoSettings: store.seoSettings });
+    res.json({ 
+      message: "SEO & AI settings updated successfully!", 
+      seoSettings: store.seoSettings,
+      websiteTitle: store.websiteTitle,
+      metaDescription: store.metaDescription,
+      metaKeywords: store.metaKeywords,
+      canonicalDomain: store.canonicalDomain
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
