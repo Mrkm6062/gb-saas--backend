@@ -612,6 +612,9 @@ export const updateStaffOrderStatus = async (req, res) => {
         order.deliveredAt = new Date();
         order.paymentStatus = "paid";
       }
+      if (req.body.paymentMethod) order.paymentMethod = req.body.paymentMethod;
+      if (req.body.paymentStatus) order.paymentStatus = req.body.paymentStatus;
+      if (req.body.paymentId) order.paymentId = req.body.paymentId;
     } else if (staff.role === "kitchen") {
       // Kitchen actions: 'preparing', 'wasted', or 'finish'
       if (orderStatus === "preparing") {
