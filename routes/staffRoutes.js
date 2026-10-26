@@ -5,6 +5,8 @@ import {
   updateStaff,
   deleteStaff,
   loginStaff,
+  sendStaffLoginOtp,
+  verifyStaffLoginOtp,
   sendDigitalBillEmail,
   getPosCatalog,
   protectStaff,
@@ -19,8 +21,10 @@ import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Public route for staff login (Counter, Kitchen, Delivery, Cashier, Manager)
+// Public routes for staff login & OTP authentication
 router.post("/login", loginStaff);
+router.post("/send-otp", sendStaffLoginOtp);
+router.post("/verify-otp", verifyStaffLoginOtp);
 
 // Public route for Counter POS catalog (products & categories)
 router.get("/pos-catalog", getPosCatalog);

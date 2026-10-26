@@ -6,6 +6,7 @@ import Category from "../models/Category.js";
 import StoreAlerts from "../models/StoreAlerts.js";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
+import { sendStaffLoginOtpEmail } from "../services/landingEmailService.js";
 
 // Helper: Generate JWT for staff
 const generateStaffToken = (staff, store) => {
@@ -267,6 +268,160 @@ export const loginStaff = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// 5.1 SEND STAFF LOGIN OTP (Store ID + Staff Email via LandingMailConfig)
+export const sendStaffLoginOtp = async (req, res) => {
+  try {
+    const { storeId, email } = req.body;
+
+    if (!storeId || !email) {
+      return res.status(400).json({ message: "Store ID and Staff Email are required." });
+    }
+
+    const cleanStoreId = String(storeId).trim();
+    const cleanEmail = String(email).trim().toLowerCase();
+
+    // Resolve store by storeId, storeSlug, subdomain, or _id
+    const isMongoId = /^[0-9a-fA-F]{24}$/.test(cleanStoreId);
+    const storeConditions = [
+      { storeId: cleanStoreId },
+      { storeSlug: cleanStoreId.toLowerCase() },
+      { subdomain: cleanStoreId.toLowerCase() }
+    ];
+    if (isMongoId) storeConditions.push({ _id: cleanStoreId });
+
+    const store = await Store.findOne({ $or: storeConditions });
+    if (!store) {
+      return res.status(404).json({ message: "Store not found. Please verify your Store ID." });
+    }
+
+    // Find staff member with this email in this store
+    const staff = await Staff.findOne({
+      store: store._id,
+      email: { $regex: new RegExp(`^${cleanEmail}$`, "i") }
+    });
+
+    if (!staff) {
+      return res.status(404).json({
+        message: `No staff member registered with email "${cleanEmail}" in store ${store.storeId || store.storeName}.`
+      });
+    }
+
+    if (staff.status === "inactive") {
+      return res.status(403).json({ message: "This staff account is deactivated. Contact store administrator." });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    staff.loginOtp = otp;
+    staff.loginOtpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    await staff.save();
+
+    // Send OTP email using landing email service
+    await sendStaffLoginOtpEmail({
+      toEmail: cleanEmail,
+      otp,
+      staffName: staff.name,
+      storeName: store.storeName,
+      storeId: store.storeId || store.storeSlug
+    });
+
+    res.json({
+      success: true,
+      message: `OTP sent successfully to ${cleanEmail}. Please enter the 6-digit code.`
+    });
+  } catch (error) {
+    console.error("sendStaffLoginOtp error:", error);
+    res.status(500).json({ message: error.message || "Failed to send OTP email." });
+  }
+};
+
+// 5.2 VERIFY STAFF LOGIN OTP
+export const verifyStaffLoginOtp = async (req, res) => {
+  try {
+    const { storeId, email, otp } = req.body;
+
+    if (!storeId || !email || !otp) {
+      return res.status(400).json({ message: "Store ID, Staff Email, and OTP are required." });
+    }
+
+    const cleanStoreId = String(storeId).trim();
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanOtp = String(otp).trim();
+
+    // Resolve store
+    const isMongoId = /^[0-9a-fA-F]{24}$/.test(cleanStoreId);
+    const storeConditions = [
+      { storeId: cleanStoreId },
+      { storeSlug: cleanStoreId.toLowerCase() },
+      { subdomain: cleanStoreId.toLowerCase() }
+    ];
+    if (isMongoId) storeConditions.push({ _id: cleanStoreId });
+
+    const store = await Store.findOne({ $or: storeConditions });
+    if (!store) {
+      return res.status(404).json({ message: "Store not found." });
+    }
+
+    // Find staff
+    const staff = await Staff.findOne({
+      store: store._id,
+      email: { $regex: new RegExp(`^${cleanEmail}$`, "i") }
+    }).populate("store");
+
+    if (!staff) {
+      return res.status(404).json({ message: "Staff member not found." });
+    }
+
+    if (staff.status === "inactive") {
+      return res.status(403).json({ message: "This staff account is deactivated." });
+    }
+
+    // Verify OTP
+    if (!staff.loginOtp || staff.loginOtp !== cleanOtp) {
+      return res.status(400).json({ message: "Invalid OTP code entered." });
+    }
+
+    if (!staff.loginOtpExpires || new Date() > new Date(staff.loginOtpExpires)) {
+      return res.status(400).json({ message: "OTP has expired. Please request a new OTP." });
+    }
+
+    // Clear OTP
+    staff.loginOtp = null;
+    staff.loginOtpExpires = null;
+    staff.lastLogin = new Date();
+    await staff.save();
+
+    const token = generateStaffToken(staff, store);
+
+    res.json({
+      success: true,
+      message: "Login successful!",
+      token,
+      staff: {
+        _id: staff._id,
+        name: staff.name,
+        staffId: staff.staffId,
+        role: staff.role,
+        phone: staff.phone,
+        email: staff.email,
+        store: {
+          _id: store._id,
+          storeId: store.storeId,
+          storeName: store.storeName,
+          storeSlug: store.storeSlug,
+          logo: store.logo,
+          locationAddress: store.locationAddress,
+          tables: store.tables || ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+          isRestaurant: store.isRestaurant,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("verifyStaffLoginOtp error:", error);
+    res.status(500).json({ message: error.message || "Failed to verify OTP." });
   }
 };
 

@@ -45,6 +45,14 @@ const staffSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    loginOtp: {
+      type: String,
+      default: null,
+    },
+    loginOtpExpires: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

@@ -295,3 +295,85 @@ export const testLandingMailConnection = async (testConfig) => {
 
   return { success: true, message: "SMTP configuration verified and test email sent successfully!" };
 };
+
+/**
+ * Send Staff Login OTP Email using LandingMailConfig
+ */
+export const sendStaffLoginOtpEmail = async ({ toEmail, otp, staffName, storeName, storeId }) => {
+  try {
+    let config = await LandingMailConfig.findOne({ key: "global" });
+
+    // Fallback config from environment if LandingMailConfig not found or incomplete
+    if (!config || !config.smtpHost || !config.smtpUser || !config.smtpPass) {
+      if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+        config = {
+          smtpHost: process.env.SMTP_HOST,
+          smtpPort: process.env.SMTP_PORT || 587,
+          secure: process.env.SMTP_SECURE === "true",
+          smtpUser: process.env.SMTP_USER,
+          smtpPass: process.env.SMTP_PASS,
+          fromName: process.env.FROM_NAME || "GaliBrand Staff Portal",
+          fromEmail: process.env.FROM_EMAIL || process.env.SMTP_USER,
+        };
+      } else {
+        throw new Error("Landing mail configuration (SMTP) is not configured in settings or environment.");
+      }
+    }
+
+    const transporter = createLandingTransporter(config);
+    const senderName = config.fromName || "GaliBrand Staff Portal";
+    const senderEmail = config.fromEmail || config.smtpUser;
+
+    const subject = `🔐 [${otp}] Your Staff Login OTP - ${storeName || "GaliBrand"}`;
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Staff Login OTP</title>
+      </head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px; color: #1e293b;">
+        <div style="max-width: 500px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 16px rgba(0,0,0,0.06);">
+          <div style="background: linear-gradient(135deg, #0f172a, #1e293b); color: #ffffff; padding: 24px 30px; text-align: center;">
+            <h1 style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.5px;">${storeName || "Store Staff Portal"}</h1>
+            <p style="margin: 4px 0 0; font-size: 12px; color: #94a3b8;">Store Code: ${storeId || "GaliBrand"}</p>
+          </div>
+          <div style="padding: 30px; text-align: center;">
+            <p style="margin: 0 0 16px; font-size: 15px; color: #334155; font-weight: 600;">
+              Hello ${staffName || "Staff Member"},
+            </p>
+            <p style="margin: 0 0 24px; font-size: 13px; color: #64748b; line-height: 1.5;">
+              Use the One-Time Password (OTP) below to securely log in to your staff terminal:
+            </p>
+            <div style="display: inline-block; padding: 14px 28px; background: #f8fafc; border: 2px dashed #4f46e5; border-radius: 12px; margin-bottom: 24px;">
+              <span style="font-family: monospace; font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #4f46e5;">${otp}</span>
+            </div>
+            <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+              ⏱️ This OTP is valid for <strong>10 minutes</strong>. Do not share this code with anyone.
+            </p>
+          </div>
+          <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 30px; text-align: center; font-size: 11px; color: #94a3b8;">
+            Sent securely via GaliBrand Staff Access Management
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const textContent = `Your GaliBrand Staff Login OTP is: ${otp}\nValid for 10 minutes.\nStore: ${storeName} (${storeId})\nStaff: ${staffName}`;
+
+    await transporter.sendMail({
+      from: `"${senderName}" <${senderEmail}>`,
+      to: toEmail,
+      subject,
+      text: textContent,
+      html: htmlContent,
+    });
+
+    return { sent: true };
+  } catch (error) {
+    console.error("❌ Failed to send staff login OTP email:", error);
+    throw error;
+  }
+};
