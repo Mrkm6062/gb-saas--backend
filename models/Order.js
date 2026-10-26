@@ -77,6 +77,12 @@ const orderSchema = new mongoose.Schema(
       default: "",
     },
 
+    deliveryStaff: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Staff",
+      default: null,
+    },
+
     WhasAppOrder: {
       type: Boolean,
       default: false,
@@ -94,7 +100,7 @@ const orderSchema = new mongoose.Schema(
 
     orderStatus: {
       type: String,
-      default: "placed", // placed / shipped / delivered /returned / cancelled
+      default: "placed", // placed / preparing / shipped / delivered / returned / canceled / wasted
     },
     orderSource: {
       type: String,
@@ -116,9 +122,25 @@ const orderSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    preparingAt: {
+      type: Date,
+      default: null
+    },
+    shippedAt: {
+      type: Date,
+      default: null
+    },
     deliveredAt: {
       type: Date,
       default: null
+    },
+    wastedAt: {
+      type: Date,
+      default: null
+    },
+    wastedReason: {
+      type: String,
+      default: ""
     }
   },
   { timestamps: true }

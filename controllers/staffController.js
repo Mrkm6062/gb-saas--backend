@@ -518,3 +518,273 @@ export const getPosCatalog = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// 8. STAFF AUTHENTICATION MIDDLEWARE
+export const protectStaff = async (req, res, next) => {
+  let token = null;
+  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+    token = req.headers.authorization.split(" ")[1];
+  }
+
+  if (!token) {
+    return res.status(401).json({ message: "Staff authorization token required." });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback_secret_key");
+    const staff = await Staff.findById(decoded.staffId).populate("store");
+    if (!staff) {
+      return res.status(401).json({ message: "Staff member not found." });
+    }
+    if (staff.status === "inactive") {
+      return res.status(403).json({ message: "This staff account is deactivated." });
+    }
+
+    req.staff = staff;
+    req.staffStore = staff.store;
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: "Invalid or expired staff token." });
+  }
+};
+
+// 9. GET ORDERS FOR LOGGED-IN STAFF (Role-based filtering)
+export const getStaffOrders = async (req, res) => {
+  try {
+    const staff = req.staff;
+    const store = staff.store;
+    let query = { store: store._id };
+
+    if (staff.role === "delivery") {
+      // Delivery staff can ONLY see shipped orders assigned to them!
+      query.orderStatus = "shipped";
+      query.$or = [
+        { deliveryStaff: staff._id },
+        { DeliveryPersonName: { $regex: new RegExp("^" + staff.name.trim() + "$", "i") } },
+        ...(staff.phone ? [{ DeliveryPersonPhone: staff.phone.trim() }] : [])
+      ];
+    } else if (staff.role === "kitchen") {
+      // Kitchen area receives placed, preparing, and wasted orders
+      query.orderStatus = { $in: ["placed", "preparing", "wasted"] };
+    }
+
+    const orders = await Order.find(query)
+      .populate("orderItems.product", "images")
+      .populate("deliveryStaff", "name phone staffId")
+      .sort({ createdAt: -1 })
+      .limit(100);
+
+    res.json({
+      success: true,
+      role: staff.role,
+      staffName: staff.name,
+      orders
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 10. UPDATE ORDER STATUS BY STAFF
+export const updateStaffOrderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { orderStatus, wastedReason, deliveryStaffId, DeliveryPersonName, DeliveryPersonPhone } = req.body;
+    const staff = req.staff;
+
+    const order = await Order.findOne({ _id: id, store: staff.store._id });
+    if (!order) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+
+    if (staff.role === "delivery") {
+      // Delivery person can only complete their assigned orders
+      const isAssigned = (order.deliveryStaff && String(order.deliveryStaff) === String(staff._id)) ||
+        (order.DeliveryPersonName && order.DeliveryPersonName.toLowerCase() === staff.name.toLowerCase()) ||
+        (staff.phone && order.DeliveryPersonPhone === staff.phone);
+
+      if (!isAssigned) {
+        return res.status(403).json({ message: "You are only authorized to update orders assigned to you." });
+      }
+
+      if (orderStatus === "delivered") {
+        order.orderStatus = "delivered";
+        order.deliveredAt = new Date();
+        order.paymentStatus = "paid";
+      }
+    } else if (staff.role === "kitchen") {
+      // Kitchen actions: 'preparing', 'wasted', or 'finish'
+      if (orderStatus === "preparing") {
+        order.orderStatus = "preparing";
+        order.preparingAt = new Date();
+      } else if (orderStatus === "wasted") {
+        order.orderStatus = "wasted";
+        order.wastedAt = new Date();
+        if (wastedReason) order.wastedReason = wastedReason;
+      } else if (orderStatus === "finish" || orderStatus === "delivered" || orderStatus === "shipped") {
+        const isDineIn = order.orderType && order.orderType.toLowerCase() === "dine-in";
+        if (isDineIn) {
+          order.orderStatus = "delivered";
+          order.deliveredAt = new Date();
+        } else {
+          order.orderStatus = "shipped";
+          order.shippedAt = new Date();
+          if (deliveryStaffId) order.deliveryStaff = deliveryStaffId;
+          if (DeliveryPersonName) order.DeliveryPersonName = DeliveryPersonName;
+          if (DeliveryPersonPhone) order.DeliveryPersonPhone = DeliveryPersonPhone;
+        }
+      }
+    } else {
+      // Counter, Cashier, Manager
+      if (orderStatus) order.orderStatus = orderStatus;
+      if (orderStatus === "delivered") {
+        order.deliveredAt = new Date();
+        order.paymentStatus = "paid";
+      }
+      if (orderStatus === "preparing") order.preparingAt = new Date();
+      if (orderStatus === "shipped") order.shippedAt = new Date();
+      if (orderStatus === "wasted") {
+        order.wastedAt = new Date();
+        if (wastedReason) order.wastedReason = wastedReason;
+      }
+      if (deliveryStaffId) order.deliveryStaff = deliveryStaffId;
+      if (DeliveryPersonName) order.DeliveryPersonName = DeliveryPersonName;
+      if (DeliveryPersonPhone) order.DeliveryPersonPhone = DeliveryPersonPhone;
+    }
+
+    const updated = await order.save();
+    res.json({ success: true, message: "Order updated successfully!", order: updated });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 11. GET KITCHEN ORDERS (For ManageCounter and KDS Display)
+export const getKitchenOrders = async (req, res) => {
+  try {
+    const { storeId } = req.query;
+    if (!storeId) {
+      return res.status(400).json({ message: "storeId query parameter is required." });
+    }
+
+    const cleanStoreId = String(storeId).trim();
+    const isMongoId = /^[0-9a-fA-F]{24}$/.test(cleanStoreId);
+    const conditions = [{ storeId: cleanStoreId }];
+    if (isMongoId) {
+      conditions.push({ _id: cleanStoreId });
+    }
+
+    const store = await Store.findOne({ $or: conditions });
+    if (!store) {
+      return res.status(404).json({ message: "Store not found." });
+    }
+
+    // Orders active in kitchen (placed, preparing) + recently wasted
+    const orders = await Order.find({
+      store: store._id,
+      orderStatus: { $in: ["placed", "preparing", "wasted"] }
+    })
+      .populate("orderItems.product", "images")
+      .populate("deliveryStaff", "name phone staffId")
+      .sort({ createdAt: -1 })
+      .limit(60);
+
+    res.json({ success: true, orders, storeName: store.storeName });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 12. FINISH KITCHEN ORDER (Dine-in -> delivered, Delivery -> shipped)
+export const finishKitchenOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { deliveryStaffId, DeliveryPersonName, DeliveryPersonPhone } = req.body;
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+
+    const isDineIn = order.orderType && order.orderType.toLowerCase() === "dine-in";
+
+    if (isDineIn) {
+      order.orderStatus = "delivered";
+      order.deliveredAt = new Date();
+    } else {
+      order.orderStatus = "shipped";
+      order.shippedAt = new Date();
+      if (deliveryStaffId) order.deliveryStaff = deliveryStaffId;
+      if (DeliveryPersonName) order.DeliveryPersonName = DeliveryPersonName;
+      if (DeliveryPersonPhone) order.DeliveryPersonPhone = DeliveryPersonPhone;
+    }
+
+    await order.save();
+    res.json({
+      success: true,
+      message: isDineIn ? "Dine-in order served and marked Delivered!" : "Delivery order finished and marked Shipped!",
+      order
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 13. UPDATE KITCHEN ORDER STATUS (preparing, wasted)
+export const updateKitchenOrderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { orderStatus, wastedReason } = req.body;
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+
+    if (orderStatus === "preparing") {
+      order.orderStatus = "preparing";
+      order.preparingAt = new Date();
+    } else if (orderStatus === "wasted") {
+      order.orderStatus = "wasted";
+      order.wastedAt = new Date();
+      if (wastedReason) order.wastedReason = wastedReason;
+    }
+
+    await order.save();
+    res.json({ success: true, message: `Order status updated to ${orderStatus}`, order });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 14. GET ACTIVE DELIVERY STAFF LIST (For Assigning Shipped Orders)
+export const getStoreDeliveryStaff = async (req, res) => {
+  try {
+    const { storeId } = req.query;
+    if (!storeId) {
+      return res.status(400).json({ message: "storeId query parameter is required." });
+    }
+
+    const cleanStoreId = String(storeId).trim();
+    const isMongoId = /^[0-9a-fA-F]{24}$/.test(cleanStoreId);
+    const conditions = [{ storeId: cleanStoreId }];
+    if (isMongoId) {
+      conditions.push({ _id: cleanStoreId });
+    }
+
+    const store = await Store.findOne({ $or: conditions });
+    if (!store) {
+      return res.status(404).json({ message: "Store not found." });
+    }
+
+    const staffList = await Staff.find({
+      store: store._id,
+      role: "delivery",
+      status: "active"
+    }).select("_id name staffId phone email status");
+
+    res.json({ success: true, deliveryStaff: staffList });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

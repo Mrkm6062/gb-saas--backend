@@ -427,8 +427,8 @@ export const createOrder = async (req, res) => {
       tableNumber: resolvedTableNumber,
       WhasAppOrder: paymentMethod === 'whatsapp',
       paymentStatus: paymentStatus || (resolvedOrderSource === "counter" ? "paid" : "pending"),
-      orderStatus: orderStatus || (resolvedOrderSource === "counter" ? "delivered" : "placed"),
-      deliveredAt: (orderStatus === "delivered" || resolvedOrderSource === "counter") ? new Date() : null,
+      orderStatus: orderStatus || "placed",
+      deliveredAt: orderStatus === "delivered" ? new Date() : null,
       orderConfirmed: resolvedOrderSource === "counter" ? true : false
     });
 
@@ -666,6 +666,7 @@ export const getOrders = async (req, res) => {
 
     const orders = await Order.find({ store: storeId })
       .populate("orderItems.product", "images")
+      .populate("deliveryStaff", "name phone staffId")
       .sort({ createdAt: -1 });
 
     res.json(orders);
@@ -711,7 +712,9 @@ export const updateOrderStatus = async (req, res) => {
       ShippingTrackingNumber,
       ShippingCompany,
       DeliveryPersonName,
-      DeliveryPersonPhone
+      DeliveryPersonPhone,
+      deliveryStaff,
+      wastedReason
     } = req.body;
 
     const order = await Order.findById(id);
@@ -756,6 +759,21 @@ export const updateOrderStatus = async (req, res) => {
 
     if (orderStatus === 'delivered' && previousStatus !== 'delivered') {
       order.deliveredAt = new Date();
+    }
+    if (orderStatus === 'preparing' && previousStatus !== 'preparing') {
+      order.preparingAt = new Date();
+    }
+    if (orderStatus === 'shipped' && previousStatus !== 'shipped') {
+      order.shippedAt = new Date();
+    }
+    if (orderStatus === 'wasted' && previousStatus !== 'wasted') {
+      order.wastedAt = new Date();
+    }
+    if (wastedReason !== undefined) {
+      order.wastedReason = wastedReason;
+    }
+    if (deliveryStaff !== undefined) {
+      order.deliveryStaff = deliveryStaff || null;
     }
 
     if (ShippingMethod !== undefined) order.ShippingMethod = ShippingMethod;
