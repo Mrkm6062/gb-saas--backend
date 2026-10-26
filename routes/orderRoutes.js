@@ -1,9 +1,21 @@
 import express from "express";
-import { createOrder, getOrders, updateOrderStatus, resendOrderEmail, verifyRazorpayPayment } from "../controllers/orderController.js";
+import {
+  createOrder,
+  getOrders,
+  updateOrderStatus,
+  resendOrderEmail,
+  verifyRazorpayPayment,
+  getPublicOrder,
+  getPublicReceipt
+} from "../controllers/orderController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { subdomainMiddleware } from "../middleware/subdomain.js";
 
 const router = express.Router();
+
+// Public storefront routes (receipt & tracking)
+router.get("/receipt/:id", getPublicReceipt);
+router.get("/public/:id", getPublicOrder);
 
 // Public storefront route (protected by subdomain detection)
 router.post("/", subdomainMiddleware, createOrder);

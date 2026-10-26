@@ -860,3 +860,145 @@ export const resendOrderEmail = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// ✅ GET PUBLIC RECEIPT / DIGITAL BILL (HTML / PRINTABLE)
+export const getPublicReceipt = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findById(id).populate("store");
+    if (!order) {
+      return res.status(404).send(`
+        <!DOCTYPE html>
+        <html><head><title>Receipt Not Found</title></head>
+        <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+          <h2>Receipt Not Found</h2>
+          <p>The requested order or receipt could not be found.</p>
+        </body></html>
+      `);
+    }
+
+    const store = order.store || {};
+    const orderNumber = order._id.toString().slice(-6).toUpperCase();
+    const orderDate = new Date(order.createdAt).toLocaleString("en-IN", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+
+    const itemsRows = (order.orderItems || [])
+      .map(
+        (item) => `
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 10px 8px; font-size: 13px; color: #1e293b;">
+            <strong>${item.name}</strong>
+            ${item.foodType ? `<span style="margin-left: 6px; font-size: 10px; padding: 2px 5px; border-radius: 4px; background: ${item.foodType === 'veg' ? '#dcfce7; color: #15803d' : '#fee2e2; color: #b91c1c'}; font-weight: bold;">${item.foodType.toUpperCase()}</span>` : ''}
+          </td>
+          <td style="padding: 10px 8px; text-align: center; font-size: 13px; color: #1e293b;">${item.qty}</td>
+          <td style="padding: 10px 8px; text-align: right; font-size: 13px; color: #64748b;">Rs. ${Number(item.price).toFixed(2)}</td>
+          <td style="padding: 10px 8px; text-align: right; font-size: 13px; font-weight: bold; color: #1e293b;">Rs. ${Number(item.price * item.qty).toFixed(2)}</td>
+        </tr>
+      `
+      )
+      .join("");
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Receipt #${orderNumber} - ${store.storeName || "Retail Receipt"}</title>
+        <style>
+          * { box-sizing: border-box; }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f8fafc; margin: 0; padding: 20px 10px; color: #0f172a; }
+          .receipt-card { max-width: 480px; margin: 0 auto; background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04); border: 1px solid #e2e8f0; }
+          .receipt-header { background: linear-gradient(135deg, #0f172a, #1e293b); color: #fff; padding: 24px; text-align: center; }
+          .actions { padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; }
+          .btn { flex: 1; padding: 12px; border-radius: 10px; font-weight: bold; font-size: 13px; cursor: pointer; text-align: center; border: none; text-decoration: none; }
+          .btn-print { background: #0f172a; color: #fff; }
+          .btn-print:hover { background: #1e293b; }
+          @media print {
+            body { padding: 0; background: #fff; }
+            .receipt-card { max-width: 100%; border: none; box-shadow: none; border-radius: 0; }
+            .actions { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="receipt-card">
+          <div class="receipt-header">
+            ${store.logo ? `<img src="${store.logo}" alt="${store.storeName}" style="max-height: 48px; margin-bottom: 8px; border-radius: 6px;">` : ""}
+            <h1 style="margin: 0; font-size: 20px; font-weight: 800;">${store.storeName || "Store Receipt"}</h1>
+            <p style="margin: 4px 0 0; font-size: 11px; opacity: 0.85;">${store.locationAddress || "Thank you for your visit!"}</p>
+            ${store.storeId ? `<p style="margin: 2px 0 0; font-size: 10px; opacity: 0.7;">Store Code: ${store.storeId}</p>` : ""}
+          </div>
+          <div style="padding: 20px 24px;">
+            <div style="display: flex; justify-content: space-between; border-bottom: 2px dashed #cbd5e1; padding-bottom: 12px; margin-bottom: 16px;">
+              <div>
+                <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b;">Receipt / Invoice</div>
+                <div style="font-size: 16px; font-weight: 800; color: #0284c7;">#${orderNumber}</div>
+                <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${orderDate}</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b;">Order Type</div>
+                <div style="font-size: 12px; font-weight: 700; color: #0f172a; margin-top: 2px;">
+                  ${order.tableNumber && order.tableNumber !== "0" ? `Dine-in (Table ${order.tableNumber})` : (order.orderType || "Counter / Takeaway")}
+                </div>
+                ${order.orderBy ? `<div style="font-size: 10px; color: #64748b; margin-top: 2px;">Billed: ${order.orderBy}</div>` : ""}
+              </div>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+              <thead>
+                <tr style="background: #f1f5f9; border-bottom: 1px solid #e2e8f0;">
+                  <th style="padding: 8px; text-align: left; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase;">Item</th>
+                  <th style="padding: 8px; text-align: center; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase;">Qty</th>
+                  <th style="padding: 8px; text-align: right; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase;">Price</th>
+                  <th style="padding: 8px; text-align: right; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase;">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsRows}
+              </tbody>
+            </table>
+
+            <div style="border-top: 2px dashed #cbd5e1; padding-top: 12px; margin-bottom: 16px;">
+              ${order.discountAmount > 0 ? `
+                <div style="display: flex; justify-content: space-between; font-size: 12px; color: #64748b; margin-bottom: 4px;">
+                  <span>Subtotal</span>
+                  <span>Rs. ${((order.totalAmount || 0) + (order.discountAmount || 0)).toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px; color: #16a34a; font-weight: 600; margin-bottom: 4px;">
+                  <span>Discount</span>
+                  <span>-Rs. ${Number(order.discountAmount).toFixed(2)}</span>
+                </div>
+              ` : ''}
+              <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: 800; color: #0f172a; margin-top: 6px;">
+                <span>Grand Total</span>
+                <span>Rs. ${Number(order.totalAmount || 0).toFixed(2)}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-top: 6px;">
+                <span>Payment Method</span>
+                <span style="font-weight: 700; text-transform: uppercase; color: #16a34a;">${order.paymentMethod || "CASH"} (PAID ✓)</span>
+              </div>
+            </div>
+
+            <div style="text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 12px;">
+              <p style="margin: 0; font-weight: 600; color: #475569;">Thank you for your visit!</p>
+              <p style="margin: 2px 0 0;">Please visit us again soon.</p>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn-print" onclick="window.print()">🖨️ Print / Save PDF</button>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
+  } catch (error) {
+    res.status(500).send("Error loading receipt: " + error.message);
+  }
+};
