@@ -42,7 +42,7 @@ export const verifyEmployee = async (req, res) => {
 // CREATE NEW STORE
 export const createStore = async (req, res) => {
   try {
-    const { name, storeType, metaDescription, planId, empId, storeSlug: customSlug } = req.body;
+    const { name, storeType, metaDescription, planId, empId, storeSlug: customSlug, billingDuration, billingCycle } = req.body;
 
     // Prevent undefined.toLowerCase() crash
     if (!name || typeof name !== 'string') {
@@ -85,7 +85,16 @@ export const createStore = async (req, res) => {
     planStartDate.setDate(planStartDate.getDate() + trialPlanDays);
 
     const planExpiryDate = new Date(planStartDate);
-    planExpiryDate.setMonth(planExpiryDate.getMonth() + 1);
+    const duration = Number(billingDuration || billingCycle) || 1;
+    let daysToAdd = 30;
+    if (duration === 6) {
+      daysToAdd = 180;
+    } else if (duration === 12) {
+      daysToAdd = 365;
+    } else {
+      daysToAdd = duration * 30;
+    }
+    planExpiryDate.setDate(planExpiryDate.getDate() + daysToAdd);
 
     if (!req.user || !req.user.userId) {
       return res.status(401).json({ message: "Unauthorized. User context is missing." });
