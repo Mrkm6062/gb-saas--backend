@@ -40,7 +40,6 @@ const productSchema = new mongoose.Schema({
   Brand: { type: String },
   category: { type: String },
   foodtype: { type: String }, // "Non-Veg", "Veg", "Vegan", "Gluten-Free"
-  foodType: { type: String },
   subCategory: { type: String },
   subCategories: [{ type: mongoose.Schema.Types.ObjectId, ref: "SubCategory" }],
   offerCategories: [{ type: mongoose.Schema.Types.ObjectId, ref: "OfferCategory" }],
