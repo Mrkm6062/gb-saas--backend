@@ -18,6 +18,26 @@ export const getDefaultTemplates = (storeName = "Our Store") => [
     isActive: true,
   },
   {
+    eventType: "order_preparing",
+    name: "Order Preparing Template",
+    subject: `Your order is being prepared! - {{storeName}}`,
+    body: `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+  <h2 style="color: #f59e0b;">Order in Preparation</h2>
+  <p>Hi {{customerName}},</p>
+  <p>Great news! <strong>{{storeName}}</strong> has started preparing your order <strong>#{{orderId}}</strong>.</p>
+  <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 10px; padding: 15px; margin: 20px 0;">
+    <p style="margin: 0; font-size: 14px; color: #92400e;">
+      🍳 Our team is preparing your fresh items with care. We will notify you as soon as your order is packed and dispatched for delivery!
+    </p>
+  </div>
+  <h3 style="margin-top: 25px; border-bottom: 2px solid #eee; padding-bottom: 5px;">Order Summary</h3>
+  {{orderItems}}
+  <p style="text-align: right; font-size: 16px;"><strong>Total Amount: ₹{{totalAmount}}</strong></p>
+  <p style="margin-top: 30px; color: #777; font-size: 12px; text-align: center;">This is an automated email sent via {{storeName}}.</p>
+</div>`,
+    isActive: true,
+  },
+  {
     eventType: "order_shipped",
     name: "Order Shipped Template",
     subject: `Your order has been shipped! - {{storeName}}`,

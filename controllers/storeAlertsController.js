@@ -31,6 +31,16 @@ export const getAlertConfig = async (req, res) => {
       if (!config.templates || config.templates.length === 0) {
         config.templates = getDefaultTemplates(store.storeName);
         await config.save();
+      } else {
+        // Auto-seed order_preparing if missing from existing template set
+        const hasPreparing = config.templates.some(t => t.eventType === 'order_preparing');
+        if (!hasPreparing) {
+          const defaultPreparing = getDefaultTemplates(store.storeName).find(t => t.eventType === 'order_preparing');
+          if (defaultPreparing) {
+            config.templates.push(defaultPreparing);
+            await config.save();
+          }
+        }
       }
     }
 

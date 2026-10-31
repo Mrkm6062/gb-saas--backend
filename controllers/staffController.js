@@ -935,6 +935,18 @@ export const updateKitchenOrderStatus = async (req, res) => {
     }
 
     await order.save();
+
+    try {
+      const storeObj = await Store.findById(order.store);
+      if (storeObj && order.orderStatus) {
+        sendStatusUpdateEmail(order, storeObj, order.orderStatus).catch(err => {
+          console.error("[staffController] Error sending updateKitchenOrderStatus email:", err.message);
+        });
+      }
+    } catch (emailErr) {
+      console.error("[staffController] Error triggering updateKitchenOrderStatus email:", emailErr.message);
+    }
+
     res.json({ success: true, message: `Order status updated to ${orderStatus}`, order });
   } catch (error) {
     res.status(500).json({ message: error.message });

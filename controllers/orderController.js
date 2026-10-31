@@ -244,11 +244,17 @@ export const sendStatusUpdateEmail = async (order, store, status) => {
     if (config && config.isEmailEnabled === false) return;
 
     const eventTypeMap = {
+      preparing: 'order_preparing',
+      order_preparing: 'order_preparing',
       shipped: 'order_shipped',
+      order_shipped: 'order_shipped',
       delivered: 'order_delivered',
+      order_delivered: 'order_delivered',
       canceled: 'order_canceled',
       cancelled: 'order_canceled',
-      returned: 'order_returned'
+      order_canceled: 'order_canceled',
+      returned: 'order_returned',
+      order_returned: 'order_returned'
     };
     const eventType = eventTypeMap[status];
     if (!eventType) return;
