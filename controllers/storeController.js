@@ -11,6 +11,8 @@ import StoreHours from "../models/StoreHours.js";
 import nodemailer from "nodemailer";
 import CustomPage from "../models/CustomPage.js";
 import Pwa from "../models/Pwa.js";
+import StoreAlerts from "../models/StoreAlerts.js";
+import { getDefaultTemplates } from "../utils/defaultAlertTemplates.js";
 
 // Nodemailer transporter for system emails (Welcome & Renewals)
 const transporter = nodemailer.createTransport({
@@ -122,6 +124,23 @@ export const createStore = async (req, res) => {
       trialPlanDays,
       theme: 'default-theme'
     });
+
+    // Provide default mail alert configuration using LandingMailConfig (by default active/ON)
+    try {
+      await StoreAlerts.create({
+        storeId: store._id,
+        isEmailEnabled: true,
+        useDefaultMail: true,
+        provider: "system",
+        smtpHost: "smtp.gmail.com",
+        smtpPort: 587,
+        emailAddress: "",
+        appPassword: "",
+        templates: getDefaultTemplates(store.storeName),
+      });
+    } catch (alertErr) {
+      console.error("Failed to seed default store alert config:", alertErr.message);
+    }
 
     // Seed default homepage for Custom Website store types
     if (storeType === "Custom Website(HTML,CSS,JS)") {

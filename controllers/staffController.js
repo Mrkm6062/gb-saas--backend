@@ -7,6 +7,7 @@ import StoreAlerts from "../models/StoreAlerts.js";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import { sendStaffLoginOtpEmail } from "../services/landingEmailService.js";
+import { sendStatusUpdateEmail } from "./orderController.js";
 
 // Helper: Generate JWT for staff
 const generateStaffToken = (staff, store) => {
@@ -811,6 +812,19 @@ export const updateStaffOrderStatus = async (req, res) => {
     }
 
     const updated = await order.save();
+
+    // Trigger status update email if status changed to shipped, delivered, etc.
+    try {
+      const storeObj = await Store.findById(staff.store?._id || staff.store || order.store);
+      if (storeObj && updated.orderStatus) {
+        sendStatusUpdateEmail(updated, storeObj, updated.orderStatus).catch(err => {
+          console.error("[staffController] Error sending status update email:", err.message);
+        });
+      }
+    } catch (emailErr) {
+      console.error("[staffController] Error triggering status update email:", emailErr.message);
+    }
+
     res.json({ success: true, message: "Order updated successfully!", order: updated });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -878,6 +892,18 @@ export const finishKitchenOrder = async (req, res) => {
     }
 
     await order.save();
+
+    try {
+      const storeObj = await Store.findById(order.store);
+      if (storeObj && order.orderStatus) {
+        sendStatusUpdateEmail(order, storeObj, order.orderStatus).catch(err => {
+          console.error("[staffController] Error sending finishKitchenOrder email:", err.message);
+        });
+      }
+    } catch (emailErr) {
+      console.error("[staffController] Error triggering finishKitchenOrder email:", emailErr.message);
+    }
+
     res.json({
       success: true,
       message: isDineIn ? "Dine-in order served and marked Delivered!" : "Delivery order finished and marked Shipped!",

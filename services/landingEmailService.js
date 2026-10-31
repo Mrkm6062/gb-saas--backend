@@ -377,3 +377,30 @@ export const sendStaffLoginOtpEmail = async ({ toEmail, otp, staffName, storeNam
     throw error;
   }
 };
+
+
+/**
+ * Returns the active LandingMailConfig and an initialized Nodemailer transporter.
+ * Falls back to environment variables (EMAIL_HOST, EMAIL_USER, EMAIL_PASS) if LandingMailConfig is incomplete.
+ */
+export const getLandingMailConfigAndTransporter = async () => {
+  let config = await LandingMailConfig.findOne({ key: "global" });
+  if (!config || !config.smtpHost || !config.smtpUser || !config.smtpPass) {
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      config = {
+        smtpHost: process.env.EMAIL_HOST || "smtp.gmail.com",
+        smtpPort: Number(process.env.EMAIL_PORT) || 587,
+        secure: Number(process.env.EMAIL_PORT) === 465,
+        smtpUser: process.env.EMAIL_USER,
+        smtpPass: process.env.EMAIL_PASS,
+        fromName: "GaliBrand Store Alert",
+        fromEmail: process.env.EMAIL_USER,
+      };
+    } else {
+      return null;
+    }
+  }
+
+  const transporter = createLandingTransporter(config);
+  return { config, transporter };
+};

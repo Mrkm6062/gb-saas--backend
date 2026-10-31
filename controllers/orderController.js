@@ -3,6 +3,8 @@ import Product from "../models/Product.js";
 import Store from "../models/Store.js";
 import Coupon from "../models/Coupon.js";
 import StoreAlerts from "../models/StoreAlerts.js";
+import { getLandingMailConfigAndTransporter } from "../services/landingEmailService.js";
+import { getDefaultTemplates } from "../utils/defaultAlertTemplates.js";
 import DeliverySettings from "../models/DeliverySettings.js";
 import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
@@ -91,37 +93,75 @@ const calculateOfferDiscount = (orderItems, productsInDb) => {
   };
 };
 
-// Internal Helper function to send order confirmation email asynchronously
-const sendOrderConfirmationEmail = async (order, store) => {
-  if (!order.customerEmail) return;
+// Internal Helper function to resolve mail transporter (System Default LandingMailConfig vs Custom SMTP)
+const resolveStoreMailTransporter = async (store, config) => {
+  const hasCustomMail = Boolean(config && config.emailAddress && config.appPassword);
+  const shouldUseDefault = (!config) || (config.useDefaultMail !== false) || !hasCustomMail;
+
+  if (!shouldUseDefault && hasCustomMail) {
+    const transporter = nodemailer.createTransport({
+      host: config.smtpHost || "smtp.gmail.com",
+      port: Number(config.smtpPort) || 587,
+      secure: Number(config.smtpPort) === 465,
+      auth: { user: config.emailAddress, pass: config.appPassword },
+      tls: { rejectUnauthorized: false }
+    });
+    return {
+      transporter,
+      fromAddress: `"${store.storeName}" <${config.emailAddress}>`,
+      isDefault: false
+    };
+  }
+
+  // System Default Mail (LandingMailConfig)
+  const defaultMailer = await getLandingMailConfigAndTransporter();
+  if (!defaultMailer) {
+    return null;
+  }
+  const senderEmail = defaultMailer.config.fromEmail || defaultMailer.config.smtpUser;
+  return {
+    transporter: defaultMailer.transporter,
+    fromAddress: `"${store.storeName}" <${senderEmail}>`,
+    isDefault: true
+  };
+};
+
+// Internal / Exported Helper function to send order confirmation email asynchronously
+export const sendOrderConfirmationEmail = async (order, store) => {
+  if (!order || !order.customerEmail) return;
   try {
     const config = await StoreAlerts.findOne({ storeId: store._id });
-    if (!config || !config.isEmailEnabled || !config.emailAddress || !config.appPassword) return;
+    if (config && config.isEmailEnabled === false) return;
 
-    const transporter = nodemailer.createTransport({
-      host: config.smtpHost, port: config.smtpPort, secure: config.smtpPort === 465,
-      auth: { user: config.emailAddress, pass: config.appPassword }
-    });
+    const mailer = await resolveStoreMailTransporter(store, config);
+    if (!mailer) {
+      console.warn(`[orderController] No mail transporter available for store: ${store.storeName}`);
+      return;
+    }
 
-    let subject = `Order Received - ${store.storeName}`;
-    let html = '';
-
-    const itemsHtml = order.orderItems.map(item => {
+    const itemsHtml = (order.orderItems || []).map(item => {
       const customImgHtml = item.customImage ? `<br><span style="font-size: 11px; color: #666; display: block; margin-top: 4px;">Custom Image:</span><a href="${item.customImage}" target="_blank"><img src="${item.customImage}" style="max-height: 60px; border-radius: 4px; margin-top: 4px; border: 1px solid #eee;" alt="Custom Design"/></a>` : '';
       return `<tr><td style="padding:8px; border-bottom:1px solid #ddd; vertical-align:top;">${item.qty}x ${item.name}${customImgHtml}</td><td style="padding:8px; border-bottom:1px solid #ddd; text-align:right; vertical-align:top;">₹${item.price * item.qty}</td></tr>`;
     }).join('');
     
-    const domainRecord = await Domain.findOne({ storeId: store._id, status: 'connected' });
+    let domainRecord = null;
+    try {
+      domainRecord = await Domain.findOne({ storeId: store._id, status: 'connected' });
+    } catch (e) {}
     const storeUrl = domainRecord ? `https://${domainRecord.domain}` : `https://${store.subdomain}`;
     
-    const reviewLinksHtml = order.orderItems.map(item => 
+    const reviewLinksHtml = (order.orderItems || []).map(item => 
       `<div style="margin-bottom: 10px;"><a href="${storeUrl}/review/${order._id}/${item.product?._id || item.product}" style="display: inline-block; background-color: #76b900; color: #ffffff; padding: 8px 16px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Review ${item.name}</a></div>`
     ).join('');
     
-    const template = config.templates?.find(t => t.eventType === 'order_placed' && t.isActive);
+    let template = config?.templates?.find(t => t.eventType === 'order_placed' && t.isActive !== false);
+    if (!template) {
+      const defaultTemplates = getDefaultTemplates(store.storeName);
+      template = defaultTemplates.find(t => t.eventType === 'order_placed');
+    }
 
     const resolvedPaymentMethod = (order.paymentMethod === 'whatsapp' || order.WhasAppOrder) ? 'WhatsApp' : order.paymentMethod === 'razorpay' ? 'Online' : 'COD';
-    const resolvedOrderStatus = order.orderStatus ? order.orderStatus.toUpperCase() : "";
+    const resolvedOrderStatus = order.orderStatus ? order.orderStatus.toUpperCase() : "PLACED";
 
     let discountRowsHtml = '';
     if (order.discountDetails && order.discountDetails.length > 0) {
@@ -139,6 +179,9 @@ const sendOrderConfirmationEmail = async (order, store) => {
         </tr>
       `;
     }
+
+    let subject = `Order Received - ${store.storeName}`;
+    let html = '';
 
     if (template) {
       subject = template.subject
@@ -172,47 +215,74 @@ const sendOrderConfirmationEmail = async (order, store) => {
         <p>Thank you for shopping with <strong>${store.storeName}</strong>! We have received your order and are currently processing it.</p>
         <h3 style="margin-top: 30px; border-bottom: 2px solid #eee; padding-bottom: 5px;">Order Summary (ID: ${order._id.toString().slice(-6).toUpperCase()})</h3>
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">${itemsHtml}</table>
-        <p style="text-align: right; font-size: 16px;"><strong>Total Amount: ₹${order.totalAmount}</strong></p>
-        ${order.couponCode ? `<p style="text-align: right; color: green;">Discount Applied: -₹${order.discountAmount} (${order.couponCode})</p>` : ''}
-        ${order.shippingCharge > 0 ? `<p style="text-align: right; color: #555;">Shipping Charge: ₹${order.shippingCharge}</p>` : ''}
-        <p style="margin-top: 30px; color: #777; font-size: 12px; text-align: center;">This is an automated email sent via <strong>${store.storeName}</strong>.</p>
-      </div>
-      `;
+        <p style="text-align: right; font-size: 16px; margin: 5px 0;"><strong>Shipping:</strong> ₹${order.shippingCharge || 0}</p>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">${discountRowsHtml}</table>
+        <p style="text-align: right; font-size: 18px; margin: 5px 0;"><strong>Total Paid:</strong> ₹${order.totalAmount}</p>
+        <p><strong>Payment Method:</strong> ${resolvedPaymentMethod}</p>
+        <p><strong>Order Status:</strong> ${resolvedOrderStatus}</p>
+        <br/>
+        <p>We'll notify you once your order has shipped!</p>
+      </div>`;
     }
-    await transporter.sendMail({ from: `"${store.storeName}" <${config.emailAddress}>`, to: order.customerEmail, subject, html });
+
+    await mailer.transporter.sendMail({
+      from: mailer.fromAddress,
+      to: order.customerEmail,
+      subject,
+      html
+    });
   } catch (err) {
-    console.error("Failed to send order email:", err.message);
+    console.error("Failed to send order confirmation email:", err.message);
   }
 };
 
-// Internal Helper function to send order status update emails asynchronously
-const sendStatusUpdateEmail = async (order, store, status) => {
-  if (!order.customerEmail) return;
+// Internal / Exported Helper function to send order status update email asynchronously
+export const sendStatusUpdateEmail = async (order, store, status) => {
+  if (!order || !order.customerEmail) return;
   try {
     const config = await StoreAlerts.findOne({ storeId: store._id });
-    if (!config || !config.isEmailEnabled || !config.emailAddress || !config.appPassword) return;
+    if (config && config.isEmailEnabled === false) return;
 
-    const eventTypeMap = { shipped: 'order_shipped', delivered: 'order_delivered', canceled: 'order_canceled', returned: 'order_returned' };
+    const eventTypeMap = {
+      shipped: 'order_shipped',
+      delivered: 'order_delivered',
+      canceled: 'order_canceled',
+      cancelled: 'order_canceled',
+      returned: 'order_returned'
+    };
     const eventType = eventTypeMap[status];
-    if (!eventType) return; // Ignore if status change has no mapped template event
+    if (!eventType) return;
 
-    const template = config.templates?.find(t => t.eventType === eventType && t.isActive);
-    if (!template) return; // Don't send unless they setup a custom template for this event
+    const userConfiguredTemplate = config?.templates?.find(t => t.eventType === eventType);
+    if (userConfiguredTemplate && userConfiguredTemplate.isActive === false) {
+      return; // Store owner explicitly disabled this alert
+    }
 
-    const transporter = nodemailer.createTransport({
-      host: config.smtpHost, port: config.smtpPort, secure: config.smtpPort === 465,
-      auth: { user: config.emailAddress, pass: config.appPassword }
-    });
+    let template = userConfiguredTemplate;
+    if (!template) {
+      const defaultTemplates = getDefaultTemplates(store.storeName);
+      template = defaultTemplates.find(t => t.eventType === eventType);
+    }
+    if (!template) return;
 
-    const itemsHtml = order.orderItems.map(item => {
+    const mailer = await resolveStoreMailTransporter(store, config);
+    if (!mailer) {
+      console.warn(`[orderController] No mail transporter available for store: ${store.storeName}`);
+      return;
+    }
+
+    const itemsHtml = (order.orderItems || []).map(item => {
       const customImgHtml = item.customImage ? `<br><span style="font-size: 11px; color: #666; display: block; margin-top: 4px;">Custom Image:</span><a href="${item.customImage}" target="_blank"><img src="${item.customImage}" style="max-height: 60px; border-radius: 4px; margin-top: 4px; border: 1px solid #eee;" alt="Custom Design"/></a>` : '';
       return `<tr><td style="padding:8px; border-bottom:1px solid #ddd; vertical-align:top;">${item.qty}x ${item.name}${customImgHtml}</td><td style="padding:8px; border-bottom:1px solid #ddd; text-align:right; vertical-align:top;">₹${item.price * item.qty}</td></tr>`;
     }).join('');
     
-    const domainRecord = await Domain.findOne({ storeId: store._id, status: 'connected' });
+    let domainRecord = null;
+    try {
+      domainRecord = await Domain.findOne({ storeId: store._id, status: 'connected' });
+    } catch (e) {}
     const storeUrl = domainRecord ? `https://${domainRecord.domain}` : `https://${store.subdomain}`;
     
-    const reviewLinksHtml = order.orderItems.map(item => 
+    const reviewLinksHtml = (order.orderItems || []).map(item => 
       `<div style="margin-bottom: 10px;"><a href="${storeUrl}/review/${order._id}/${item.product?._id || item.product}" style="display: inline-block; background-color: #76b900; color: #ffffff; padding: 8px 16px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Review ${item.name}</a></div>`
     ).join('');
     
@@ -251,7 +321,11 @@ const sendStatusUpdateEmail = async (order, store, status) => {
       `;
     }
 
-    const subject = template.subject.replace(/{{storeName}}/g, store.storeName).replace(/{{customerName}}/g, order.customerName).replace(/{{orderId}}/g, order._id.toString().slice(-6).toUpperCase());
+    const subject = template.subject
+      .replace(/{{storeName}}/g, store.storeName)
+      .replace(/{{customerName}}/g, order.customerName)
+      .replace(/{{orderId}}/g, order._id.toString().slice(-6).toUpperCase());
+
     const html = template.body
       .replace(/{{storeName}}/g, store.storeName)
       .replace(/{{customerName}}/g, order.customerName)
@@ -271,7 +345,12 @@ const sendStatusUpdateEmail = async (order, store, status) => {
       .replace(/{{DeliveryPersonName}}/g, order.DeliveryPersonName || 'N/A')
       .replace(/{{DeliveryPersonPhone}}/g, order.DeliveryPersonPhone || 'N/A');
 
-    await transporter.sendMail({ from: `"${store.storeName}" <${config.emailAddress}>`, to: order.customerEmail, subject, html });
+    await mailer.transporter.sendMail({
+      from: mailer.fromAddress,
+      to: order.customerEmail,
+      subject,
+      html
+    });
   } catch (err) {
     console.error(`Failed to send ${status} email:`, err.message);
   }
