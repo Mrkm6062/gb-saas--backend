@@ -706,16 +706,22 @@ export const protectStaff = async (req, res, next) => {
   }
 };
 
-// 9. GET ORDERS FOR LOGGED-IN STAFF (Role-based filtering)
+// 9. GET ORDERS FOR LOGGED-IN STAFF (Role-based filtering & Manager filters)
 export const getStaffOrders = async (req, res) => {
   try {
     const staff = req.staff;
     const store = staff.store;
     let query = { store: store._id };
 
+    const { status, date, search, view } = req.query;
+
     if (staff.role === "delivery") {
-      // Delivery staff can ONLY see shipped orders assigned to them!
-      query.orderStatus = "shipped";
+      // Delivery staff can see shipped & delivered orders assigned to them
+      if (status && status !== "all") {
+        query.orderStatus = status;
+      } else {
+        query.orderStatus = { $in: ["shipped", "delivered"] };
+      }
       query.$or = [
         { deliveryStaff: staff._id },
         { DeliveryPersonName: { $regex: new RegExp("^" + staff.name.trim() + "$", "i") } },
@@ -724,13 +730,59 @@ export const getStaffOrders = async (req, res) => {
     } else if (staff.role === "kitchen") {
       // Kitchen area receives placed, preparing, and wasted orders
       query.orderStatus = { $in: ["placed", "preparing", "wasted"] };
+    } else {
+      // Manager / Counter / Cashier
+      if (view === "delivery" || status) {
+        if (status && status !== "all") {
+          query.orderStatus = status;
+        } else if (view === "delivery") {
+          // In delivery view, manager sees orders relevant to delivery
+          query.$or = [
+            { orderStatus: { $in: ["shipped", "delivered"] } },
+            { orderType: { $regex: /delivery/i } },
+            { deliveryStaff: { $ne: null } }
+          ];
+        }
+      }
+    }
+
+    // Optional Date Filter (YYYY-MM-DD)
+    if (date) {
+      const cleanDate = String(date).trim();
+      const startOfDay = new Date(cleanDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(cleanDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      if (!isNaN(startOfDay.getTime()) && !isNaN(endOfDay.getTime())) {
+        query.createdAt = { $gte: startOfDay, $lte: endOfDay };
+      }
+    }
+
+    // Optional Search Filter (Order ID, phone, customer name, delivery person)
+    if (search && String(search).trim()) {
+      const cleanSearch = String(search).trim();
+      const isMongoId = /^[0-9a-fA-F]{24}$/.test(cleanSearch);
+      const searchConds = [
+        { customerPhone: { $regex: cleanSearch, $options: "i" } },
+        { customerName: { $regex: cleanSearch, $options: "i" } },
+        { DeliveryPersonName: { $regex: cleanSearch, $options: "i" } },
+      ];
+      if (isMongoId) {
+        searchConds.push({ _id: cleanSearch });
+      }
+      if (query.$or) {
+        query.$and = [{ $or: query.$or }, { $or: searchConds }];
+        delete query.$or;
+      } else {
+        query.$or = searchConds;
+      }
     }
 
     const orders = await Order.find(query)
       .populate("orderItems.product", "images")
       .populate("deliveryStaff", "name phone staffId")
       .sort({ createdAt: -1 })
-      .limit(100);
+      .limit(150);
 
     res.json({
       success: true,
