@@ -4,10 +4,12 @@ import Order from "../models/Order.js";
 import Product from "../models/Product.js";
 import Category from "../models/Category.js";
 import StoreAlerts from "../models/StoreAlerts.js";
+import StaffDeviceToken from "../models/StaffDeviceToken.js";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import { sendStaffLoginOtpEmail } from "../services/landingEmailService.js";
 import { sendStatusUpdateEmail } from "./orderController.js";
+import { notifyDeliveryStaffAssigned } from "../services/fcmNotificationService.js";
 
 // Helper: Generate JWT for staff
 const generateStaffToken = (staff, store) => {
@@ -821,8 +823,15 @@ export const updateStaffOrderStatus = async (req, res) => {
           console.error("[staffController] Error sending status update email:", err.message);
         });
       }
+
+      // If delivery staff was assigned, trigger FCM notification to their mobile device
+      if (updated.deliveryStaff && (deliveryStaffId || updated.orderStatus === 'shipped')) {
+        notifyDeliveryStaffAssigned(updated, storeObj, updated.deliveryStaff).catch(err => {
+          console.error("[staffController] Error triggering delivery staff FCM notification:", err.message);
+        });
+      }
     } catch (emailErr) {
-      console.error("[staffController] Error triggering status update email:", emailErr.message);
+      console.error("[staffController] Error triggering notifications:", emailErr.message);
     }
 
     res.json({ success: true, message: "Order updated successfully!", order: updated });
@@ -900,8 +909,15 @@ export const finishKitchenOrder = async (req, res) => {
           console.error("[staffController] Error sending finishKitchenOrder email:", err.message);
         });
       }
+
+      // If assigned to delivery staff, send FCM alert to delivery person
+      if (order.deliveryStaff) {
+        notifyDeliveryStaffAssigned(order, storeObj, order.deliveryStaff).catch(err => {
+          console.error("[staffController] Error triggering delivery staff FCM notification in finishKitchenOrder:", err.message);
+        });
+      }
     } catch (emailErr) {
-      console.error("[staffController] Error triggering finishKitchenOrder email:", emailErr.message);
+      console.error("[staffController] Error triggering finishKitchenOrder notifications:", emailErr.message);
     }
 
     res.json({
@@ -981,6 +997,124 @@ export const getStoreDeliveryStaff = async (req, res) => {
 
     res.json({ success: true, deliveryStaff: staffList });
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 15. REGISTER STAFF FCM DEVICE TOKEN (For Kitchen & Delivery App Push Alerts)
+export const registerStaffFCMToken = async (req, res) => {
+  try {
+    const { fcmToken, staffId, storeId, role, platform = 'android', deviceModel = '' } = req.body;
+
+    if (!fcmToken || typeof fcmToken !== 'string') {
+      return res.status(400).json({ message: "fcmToken string is required." });
+    }
+
+    // Identify staff member
+    let staff = null;
+    if (req.staff) {
+      staff = req.staff;
+    } else if (staffId) {
+      const cleanStaffId = String(staffId).trim();
+      const isMongoId = /^[0-9a-fA-F]{24}$/.test(cleanStaffId);
+      const query = isMongoId
+        ? { $or: [{ _id: cleanStaffId }, { staffId: cleanStaffId }] }
+        : { staffId: cleanStaffId };
+      staff = await Staff.findOne(query).populate('store');
+    }
+
+    // Identify store
+    let store = staff?.store;
+    if (!store && storeId) {
+      const cleanStoreId = String(storeId).trim();
+      const isMongoId = /^[0-9a-fA-F]{24}$/.test(cleanStoreId);
+      store = await Store.findOne(
+        isMongoId ? { $or: [{ _id: cleanStoreId }, { storeId: cleanStoreId }] } : { storeId: cleanStoreId }
+      );
+    }
+
+    if (!staff && !store) {
+      return res.status(400).json({ message: "Valid staff or store information is required to register FCM token." });
+    }
+
+    const resolvedRole = (role || staff?.role || 'kitchen').toLowerCase();
+    const resolvedStoreObjId = store?._id || staff?.store?._id || staff?.store;
+    const resolvedStoreCode = store?.storeId || (resolvedStoreObjId ? resolvedStoreObjId.toString() : '');
+
+    // Upsert into StaffDeviceToken collection
+    const deviceRecord = await StaffDeviceToken.findOneAndUpdate(
+      { fcmToken },
+      {
+        store: resolvedStoreObjId,
+        storeId: resolvedStoreCode,
+        staff: staff?._id || resolvedStoreObjId,
+        staffCode: staff?.staffId || '',
+        staffName: staff?.name || '',
+        role: resolvedRole,
+        fcmToken,
+        platform: platform || 'android',
+        deviceModel: deviceModel || '',
+        lastActive: new Date(),
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    // Also update staff model's fcmTokens array if staff exists
+    if (staff) {
+      if (!Array.isArray(staff.fcmTokens)) {
+        staff.fcmTokens = [];
+      }
+      const existingTokenIndex = staff.fcmTokens.findIndex(t => t.token === fcmToken);
+      if (existingTokenIndex >= 0) {
+        staff.fcmTokens[existingTokenIndex].updatedAt = new Date();
+        if (deviceModel) staff.fcmTokens[existingTokenIndex].deviceModel = deviceModel;
+        if (platform) staff.fcmTokens[existingTokenIndex].platform = platform;
+      } else {
+        staff.fcmTokens.push({
+          token: fcmToken,
+          platform: platform || 'android',
+          deviceModel: deviceModel || '',
+          updatedAt: new Date(),
+        });
+      }
+      await staff.save();
+    }
+
+    console.log(`[FCM Registration] Successfully registered token for staff: ${staff?.name || 'Staff'} (Role: ${resolvedRole}, Store: ${resolvedStoreCode})`);
+
+    res.json({
+      success: true,
+      message: "Device token registered successfully for staff notifications.",
+      device: {
+        id: deviceRecord._id,
+        role: deviceRecord.role,
+        platform: deviceRecord.platform,
+        lastActive: deviceRecord.lastActive,
+      },
+    });
+  } catch (error) {
+    console.error("[FCM Registration Error]:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 16. UNREGISTER STAFF FCM DEVICE TOKEN (On Logout)
+export const unregisterStaffFCMToken = async (req, res) => {
+  try {
+    const { fcmToken } = req.body;
+    if (!fcmToken) {
+      return res.status(400).json({ message: "fcmToken is required." });
+    }
+
+    await StaffDeviceToken.deleteMany({ fcmToken });
+    await Staff.updateMany(
+      { 'fcmTokens.token': fcmToken },
+      { $pull: { fcmTokens: { token: fcmToken } } }
+    );
+
+    res.json({ success: true, message: "Device token unregistered successfully." });
+  } catch (error) {
+    console.error("[FCM Unregister Error]:", error);
     res.status(500).json({ message: error.message });
   }
 };

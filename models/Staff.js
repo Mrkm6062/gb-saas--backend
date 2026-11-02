@@ -53,6 +53,14 @@ const staffSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    fcmTokens: [
+      {
+        token: { type: String, required: true },
+        platform: { type: String, default: "android" },
+        deviceModel: { type: String, default: "" },
+        updatedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );

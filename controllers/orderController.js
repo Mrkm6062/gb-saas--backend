@@ -17,6 +17,7 @@ import Domain from "../models/Domain.js";
 import { storage } from "../gcs.js";
 import { checkIsStoreOpen } from "./storeHoursController.js";
 import { sendPushToStore } from "../services/pushNotificationService.js";
+import { notifyKitchenNewOrder, notifyDeliveryStaffAssigned } from "../services/fcmNotificationService.js";
 
 const calculateOfferDiscount = (orderItems, productsInDb) => {
   let totalB1G1Discount = 0;
@@ -529,6 +530,11 @@ export const createOrder = async (req, res) => {
       }
     }).catch(err => console.error("Error triggering push notification:", err.message));
 
+    // Send FCM push notification to Kitchen Staff mobile devices (wakes phone even if app is closed)
+    notifyKitchenNewOrder(store, order).catch(err => {
+      console.error("[orderController] Error sending Kitchen FCM notification:", err.message);
+    });
+
     // Deduct stock for each ordered item
     for (const item of orderItems) {
       if (item.variantId) {
@@ -810,6 +816,7 @@ export const updateOrderStatus = async (req, res) => {
 
     const previousStatus = order.orderStatus;
     const previousPaymentStatus = order.paymentStatus;
+    const previousDeliveryStaff = order.deliveryStaff ? order.deliveryStaff.toString() : null;
 
     // Check if order was already delivered
     if (previousStatus === 'delivered') {
@@ -901,6 +908,13 @@ export const updateOrderStatus = async (req, res) => {
     }
 
     const updated = await order.save();
+
+    // Trigger FCM notification if delivery staff was assigned or order is shipped with delivery staff
+    if (updated.deliveryStaff && (orderStatus === 'shipped' || previousDeliveryStaff !== updated.deliveryStaff.toString())) {
+      notifyDeliveryStaffAssigned(updated, store, updated.deliveryStaff).catch(err => {
+        console.error("[orderController] Error sending delivery staff FCM notification:", err.message);
+      });
+    }
 
     if (orderStatus && orderStatus !== previousStatus) {
       sendStatusUpdateEmail(updated, store, orderStatus).catch(console.error);

@@ -71,6 +71,7 @@ import pwaRoutes from "./routes/pwaRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import landingContactRoutes from "./routes/landingContactRoutes.js";
 import staffRoutes from "./routes/staffRoutes.js";
+import { registerStaffFCMToken, unregisterStaffFCMToken } from "./controllers/staffController.js";
 import Pwa from "./models/Pwa.js";
 
 
@@ -244,6 +245,9 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/landing-contact", landingContactRoutes);
 app.use("/api/contact", landingContactRoutes);
 app.use("/api/store-staff", staffRoutes);
+// Alias routes for mobile staff FCM push notifications
+app.post("/api/staff/register-fcm", registerStaffFCMToken);
+app.post("/api/staff/unregister-fcm", unregisterStaffFCMToken);
 
 
 // Routes

@@ -16,6 +16,8 @@ import {
   finishKitchenOrder,
   updateKitchenOrderStatus,
   getStoreDeliveryStaff,
+  registerStaffFCMToken,
+  unregisterStaffFCMToken,
 } from "../controllers/staffController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -34,6 +36,10 @@ router.get("/delivery-staff", getStoreDeliveryStaff);
 
 // Route for sending digital bill via email
 router.post("/send-digital-bill", sendDigitalBillEmail);
+
+// FCM Mobile App Push Notification registration (Kitchen & Delivery)
+router.post("/register-fcm", registerStaffFCMToken);
+router.post("/unregister-fcm", unregisterStaffFCMToken);
 
 // Kitchen Area (KDS) routes
 router.get("/kitchen-orders", getKitchenOrders);
