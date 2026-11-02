@@ -135,9 +135,9 @@ export const sendPushToStore = async (storeId, payload) => {
         };
         errors.push(errDetail);
 
-        // If subscription has expired or is invalid (410 Gone / 404 Not Found), remove it from DB
-        if (err.statusCode === 410 || err.statusCode === 404) {
-          console.log(`[WebPush] Removing expired subscription ${sub._id} (${err.statusCode})`);
+        // If subscription has expired (410 / 404) or credentials mismatched (403), remove it from DB
+        if (err.statusCode === 410 || err.statusCode === 404 || err.statusCode === 403) {
+          console.log(`[WebPush] Removing invalid/expired subscription ${sub._id} (${err.statusCode})`);
           await PushSubscription.deleteOne({ _id: sub._id }).catch(() => {});
         } else {
           console.error(`[WebPush] Push delivery error for subscriber ${sub._id} (${err.statusCode}):`, err.message, err.body || "");

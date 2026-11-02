@@ -11,7 +11,14 @@ export const getPublicCheckoutSettings = async (req, res) => {
       return res.status(400).json({ message: "Store context missing" });
     }
 
-    const settings = await CheckoutSettings.findOne({ storeId });
+    let resolvedStoreId = storeId;
+    const cleanId = String(storeId).trim();
+    if (!/^[0-9a-fA-F]{24}$/.test(cleanId)) {
+      const storeDoc = await Store.findOne({ storeId: cleanId }).select('_id');
+      resolvedStoreId = storeDoc ? storeDoc._id : null;
+    }
+
+    const settings = resolvedStoreId ? await CheckoutSettings.findOne({ storeId: resolvedStoreId }) : null;
     // NEVER send the Razorpay Secret to the public storefront!
     res.json(settings || {
       codEnabled: true,

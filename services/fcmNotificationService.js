@@ -24,17 +24,51 @@ const getFCMAuth = async () => {
     return { authClient, projectId };
   }
 
-  if (!fs.existsSync(serviceAccountPath)) {
-    console.warn('[FCM] Firebase service account JSON not found at:', serviceAccountPath);
+  let credentials = null;
+
+  // 1. Check for raw JSON or JSON string in environment variable
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      credentials = typeof process.env.FIREBASE_SERVICE_ACCOUNT === 'string'
+        ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+        : process.env.FIREBASE_SERVICE_ACCOUNT;
+    } catch (e) {
+      console.error('[FCM] Error parsing FIREBASE_SERVICE_ACCOUNT env var:', e.message);
+    }
+  }
+
+  // 2. Check for base64 encoded JSON in environment variable
+  if (!credentials && process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
+    try {
+      const decoded = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8');
+      credentials = JSON.parse(decoded);
+    } catch (e) {
+      console.error('[FCM] Error decoding FIREBASE_SERVICE_ACCOUNT_BASE64:', e.message);
+    }
+  }
+
+  // 3. Check for file on disk at config/firebase-service-account.json
+  if (!credentials && fs.existsSync(serviceAccountPath)) {
+    try {
+      credentials = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+    } catch (e) {
+      console.error('[FCM] Error reading service account file at ' + serviceAccountPath + ':', e.message);
+    }
+  }
+
+  if (!credentials) {
+    console.warn(
+      `[FCM] Firebase service account JSON not found at: ${serviceAccountPath}\n` +
+      `[FCM] To enable push notifications on production, either copy the JSON file to this path or set FIREBASE_SERVICE_ACCOUNT in your .env file.`
+    );
     return null;
   }
 
   try {
-    const rawData = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
-    projectId = rawData.project_id || 'gen-lang-client-0821076332';
+    projectId = credentials.project_id || 'gen-lang-client-0821076332';
 
     const auth = new GoogleAuth({
-      keyFile: serviceAccountPath,
+      credentials,
       scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
     });
 
@@ -143,23 +177,34 @@ export const notifyKitchenNewOrder = async (store, order) => {
   try {
     if (!store || !order) return;
 
-    const storeIdStr = store._id ? store._id.toString() : store.toString();
+    let storeMongoId = null;
+    let storeCode = "";
+
+    if (store && typeof store === 'object') {
+      if (store._id) storeMongoId = store._id.toString();
+      if (store.storeId) storeCode = store.storeId;
+    } else if (store) {
+      const clean = String(store).trim();
+      if (/^[0-9a-fA-F]{24}$/.test(clean)) {
+        storeMongoId = clean;
+      } else {
+        storeCode = clean;
+      }
+    }
+
+    const tokenQueryConditions = [];
+    if (storeMongoId) tokenQueryConditions.push({ store: storeMongoId });
+    if (storeCode) tokenQueryConditions.push({ storeId: storeCode });
 
     // Find all kitchen staff device tokens for this store
-    const deviceTokens = await StaffDeviceToken.find({
-      $or: [
-        { store: store._id },
-        { storeId: store.storeId || storeIdStr },
-      ],
-      role: 'kitchen',
-    });
+    const deviceTokens = tokenQueryConditions.length > 0
+      ? await StaffDeviceToken.find({ $or: tokenQueryConditions, role: 'kitchen' })
+      : [];
 
     // Also look up Staff model directly to catch tokens saved in fcmTokens array
-    const staffMembers = await Staff.find({
-      store: store._id,
-      role: 'kitchen',
-      status: 'active',
-    }).select('fcmTokens');
+    const staffMembers = storeMongoId
+      ? await Staff.find({ store: storeMongoId, role: 'kitchen', status: 'active' }).select('fcmTokens')
+      : [];
 
     const tokenSet = new Set();
     deviceTokens.forEach(d => { if (d.fcmToken) tokenSet.add(d.fcmToken); });
@@ -170,7 +215,7 @@ export const notifyKitchenNewOrder = async (store, order) => {
     });
 
     const allTokens = Array.from(tokenSet);
-    console.log(`[FCM] Found ${allTokens.length} kitchen staff device token(s) for store: ${store.storeName || storeIdStr}`);
+    console.log(`[FCM] Found ${allTokens.length} kitchen staff device token(s) for store: ${store?.storeName || storeCode || storeMongoId}`);
 
     if (allTokens.length === 0) {
       return { sent: 0, reason: 'NO_KITCHEN_TOKENS' };
@@ -178,7 +223,7 @@ export const notifyKitchenNewOrder = async (store, order) => {
 
     const orderShortId = order._id.toString().slice(-6).toUpperCase();
     const orderType = order.orderType || (order.isDineIn ? 'Dine-in' : 'Delivery');
-    const storeCode = store.storeId || storeIdStr;
+    const resolvedStoreCode = storeCode || storeMongoId || '';
 
     const title = `🍳 New Order #${orderShortId} [${orderType}]`;
     const body = `${order.customerName || 'Customer'} placed order of ₹${order.totalAmount || 0} (${order.orderItems?.length || 0} items)`;
@@ -186,7 +231,7 @@ export const notifyKitchenNewOrder = async (store, order) => {
       type: 'NEW_ORDER',
       orderId: order._id.toString(),
       orderNumber: orderShortId,
-      storeId: storeCode,
+      storeId: resolvedStoreCode,
       role: 'kitchen',
       totalAmount: String(order.totalAmount || 0),
       url: `https://dashboard.galibrand.cloud/staff-login/kitchen`,
@@ -219,8 +264,18 @@ export const notifyDeliveryStaffAssigned = async (order, store, deliveryStaffId)
   try {
     if (!order || !deliveryStaffId) return;
 
-    // Find the delivery staff
-    const staff = await Staff.findById(deliveryStaffId);
+    // Find the delivery staff safely
+    let staff = null;
+    if (typeof deliveryStaffId === 'object' && deliveryStaffId !== null && deliveryStaffId._id) {
+      staff = deliveryStaffId;
+    } else {
+      const cleanStaffId = String(deliveryStaffId).trim();
+      const isMongoId = /^[0-9a-fA-F]{24}$/.test(cleanStaffId);
+      staff = await Staff.findOne(
+        isMongoId ? { $or: [{ _id: cleanStaffId }, { staffId: cleanStaffId }] } : { staffId: cleanStaffId }
+      );
+    }
+
     if (!staff) {
       console.log(`[FCM] Delivery staff ${deliveryStaffId} not found`);
       return;

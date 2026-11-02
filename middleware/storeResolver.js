@@ -11,7 +11,12 @@ export const storeResolver = async (req, res, next) => {
     const explicitStoreId = req.headers['x-store-id'];
 
     if (explicitStoreId && explicitStoreId !== "undefined" && explicitStoreId !== "null") {
-      store = await Store.findOne({ _id: explicitStoreId, isDeleted: { $ne: true } }).populate('planId');
+      const cleanId = String(explicitStoreId).trim();
+      const isMongoId = /^[0-9a-fA-F]{24}$/.test(cleanId);
+      const query = isMongoId
+        ? { $or: [{ _id: cleanId }, { storeId: cleanId }], isDeleted: { $ne: true } }
+        : { storeId: cleanId, isDeleted: { $ne: true } };
+      store = await Store.findOne(query).populate('planId');
     }
 
     let host = explicitStoreDomain || req.headers.host || "";
@@ -33,7 +38,12 @@ export const storeResolver = async (req, res, next) => {
     if (!store) {
       const domainRecord = await Domain.findOne({ domain: normalizedHost, status: "connected" });
       if (domainRecord) {
-        store = await Store.findOne({ _id: domainRecord.storeId, isDeleted: { $ne: true } }).populate('planId');
+        const cleanDomainStoreId = String(domainRecord.storeId).trim();
+        const isMongoId = /^[0-9a-fA-F]{24}$/.test(cleanDomainStoreId);
+        const query = isMongoId
+          ? { $or: [{ _id: cleanDomainStoreId }, { storeId: cleanDomainStoreId }], isDeleted: { $ne: true } }
+          : { storeId: cleanDomainStoreId, isDeleted: { $ne: true } };
+        store = await Store.findOne(query).populate('planId');
       }
     }
 
