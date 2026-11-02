@@ -34,7 +34,7 @@ const staffSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      default: "counter", // counter | kitchen | delivery | cashier | waiter | manager
+      default: "counter", // counter | kitchen | delivery | cashier | waiter | manager | ordermanagement
     },
     status: {
       type: String,

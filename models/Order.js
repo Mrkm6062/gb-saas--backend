@@ -141,6 +141,14 @@ const orderSchema = new mongoose.Schema(
     wastedReason: {
       type: String,
       default: ""
+    },
+    canceledAt: {
+      type: Date,
+      default: null
+    },
+    cancelReason: {
+      type: String,
+      default: ""
     }
   },
   { timestamps: true }

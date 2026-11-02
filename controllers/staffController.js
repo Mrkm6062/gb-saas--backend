@@ -728,21 +728,27 @@ export const getStaffOrders = async (req, res) => {
         ...(staff.phone ? [{ DeliveryPersonPhone: staff.phone.trim() }] : [])
       ];
     } else if (staff.role === "kitchen") {
-      // Kitchen area receives placed, preparing, and wasted orders
-      query.orderStatus = { $in: ["placed", "preparing", "wasted"] };
+      // Kitchen area receives cooking (preparing) and wasted orders
+      query.orderStatus = { $in: ["preparing", "wasted"] };
     } else {
-      // Manager / Counter / Cashier
-      if (view === "delivery" || status) {
+      // Manager / ordermanagement / Counter / Cashier
+      if (view === "placed") {
+        query.orderStatus = "placed";
+      } else if (view === "delivery" || (staff.role === "ordermanagement" && view !== "kitchen" && view !== "placed" && !status)) {
         if (status && status !== "all") {
           query.orderStatus = status;
-        } else if (view === "delivery") {
-          // In delivery view, manager sees orders relevant to delivery
+        } else {
+          // In delivery view, show orders relevant to delivery
           query.$or = [
             { orderStatus: { $in: ["shipped", "delivered"] } },
             { orderType: { $regex: /delivery/i } },
             { deliveryStaff: { $ne: null } }
           ];
         }
+      } else if (view === "kitchen") {
+        query.orderStatus = { $in: ["preparing", "wasted"] };
+      } else if (status && status !== "all") {
+        query.orderStatus = status;
       }
     }
 
@@ -848,7 +854,7 @@ export const updateStaffOrderStatus = async (req, res) => {
         }
       }
     } else {
-      // Counter, Cashier, Manager
+      // Counter, Cashier, Manager, Order Management
       if (orderStatus) order.orderStatus = orderStatus;
       if (orderStatus === "delivered") {
         order.deliveredAt = new Date();
@@ -856,6 +862,11 @@ export const updateStaffOrderStatus = async (req, res) => {
       }
       if (orderStatus === "preparing") order.preparingAt = new Date();
       if (orderStatus === "shipped") order.shippedAt = new Date();
+      if (orderStatus === "canceled") {
+        order.orderStatus = "canceled";
+        order.canceledAt = new Date();
+        if (req.body.cancelReason) order.cancelReason = req.body.cancelReason;
+      }
       if (orderStatus === "wasted") {
         order.wastedAt = new Date();
         if (wastedReason) order.wastedReason = wastedReason;
@@ -912,10 +923,18 @@ export const getKitchenOrders = async (req, res) => {
       return res.status(404).json({ message: "Store not found." });
     }
 
-    // Orders active in kitchen (placed, preparing) + recently wasted
+    const { status, view } = req.query;
+    let orderStatusQuery = { $in: ["preparing", "wasted"] };
+    if (view === "placed" || status === "placed") {
+      orderStatusQuery = "placed";
+    } else if (status && status !== "all") {
+      orderStatusQuery = status;
+    }
+
+    // Kitchen area shows only active cooking (preparing) and wasted orders
     const orders = await Order.find({
       store: store._id,
-      orderStatus: { $in: ["placed", "preparing", "wasted"] }
+      orderStatus: orderStatusQuery
     })
       .populate("orderItems.product", "images")
       .populate("deliveryStaff", "name phone staffId")

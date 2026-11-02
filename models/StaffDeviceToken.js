@@ -30,7 +30,7 @@ const staffDeviceTokenSchema = new mongoose.Schema(
     role: {
       type: String,
       required: true,
-      enum: ["kitchen", "delivery", "counter", "cashier", "manager", "waiter"],
+      enum: ["kitchen", "delivery", "counter", "cashier", "manager", "waiter", "ordermanagement"],
       index: true,
     },
     fcmToken: {
