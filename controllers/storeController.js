@@ -554,7 +554,7 @@ export const getStoreData = async (req, res) => {
       storeObj.pwa = { enabled: false };
     }
 
-    const isRestaurantType = Boolean(storeObj.isRestaurant || (storeObj.storeType && /restaurant|cafe|food|dine|bistro|dhaba|eatery/i.test(storeObj.storeType)));
+    const isRestaurantType = Boolean(storeObj.isRestaurant || (storeObj.storeType && /restaurant|cafe|food|dine|bistro|dhaba|eatery|nasta|nashta|cloud\s*kitchen/i.test(storeObj.storeType)));
     storeObj.isRestaurant = isRestaurantType;
     if (!storeObj.tables || !Array.isArray(storeObj.tables) || storeObj.tables.length === 0) {
       storeObj.tables = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];

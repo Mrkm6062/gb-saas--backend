@@ -13,6 +13,10 @@ import { notifyDeliveryStaffAssigned } from "../services/fcmNotificationService.
 
 // Helper: Generate JWT for staff
 const generateStaffToken = (staff, store) => {
+  const isRestaurantType = Boolean(
+    store.isRestaurant ||
+    (store.storeType && /restaurant|cafe|food|dine|bistro|dhaba|eatery|nasta|nashta|cloud\s*kitchen/i.test(store.storeType))
+  );
   return jwt.sign(
     {
       staffId: staff._id,
@@ -21,6 +25,8 @@ const generateStaffToken = (staff, store) => {
       role: staff.role,
       storeId: store._id,
       storeCode: store.storeId,
+      storeType: store.storeType || "",
+      isRestaurant: isRestaurantType,
     },
     process.env.JWT_SECRET || "fallback_secret_key",
     { expiresIn: "7d" }
@@ -247,6 +253,10 @@ export const loginStaff = async (req, res) => {
 
     const store = staff.store;
     const token = generateStaffToken(staff, store);
+    const isRestaurantType = Boolean(
+      store.isRestaurant ||
+      (store.storeType && /restaurant|cafe|food|dine|bistro|dhaba|eatery|nasta|nashta|cloud\s*kitchen/i.test(store.storeType))
+    );
 
     res.json({
       message: "Login successful!",
@@ -262,10 +272,12 @@ export const loginStaff = async (req, res) => {
           _id: store._id,
           storeId: store.storeId,
           storeName: store.storeName,
+          storeSlug: store.storeSlug,
+          storeType: store.storeType || "",
           logo: store.logo,
           locationAddress: store.locationAddress,
           tables: store.tables || ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
-          isRestaurant: store.isRestaurant,
+          isRestaurant: isRestaurantType,
         },
       },
     });
@@ -415,10 +427,14 @@ export const verifyStaffLoginOtp = async (req, res) => {
           storeId: store.storeId,
           storeName: store.storeName,
           storeSlug: store.storeSlug,
+          storeType: store.storeType || "",
           logo: store.logo,
           locationAddress: store.locationAddress,
           tables: store.tables || ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
-          isRestaurant: store.isRestaurant,
+          isRestaurant: Boolean(
+            store.isRestaurant ||
+            (store.storeType && /restaurant|cafe|food|dine|bistro|dhaba|eatery|nasta|nashta|cloud\s*kitchen/i.test(store.storeType))
+          ),
         },
       },
     });
