@@ -5,6 +5,7 @@ import {
   updateStaff,
   deleteStaff,
   loginStaff,
+  verifyStaffToken,
   sendStaffLoginOtp,
   verifyStaffLoginOtp,
   sendDigitalBillEmail,
@@ -12,6 +13,7 @@ import {
   protectStaff,
   getStaffOrders,
   updateStaffOrderStatus,
+  updateDeliveryLocation,
   getKitchenOrders,
   finishKitchenOrder,
   updateKitchenOrderStatus,
@@ -27,6 +29,9 @@ const router = express.Router();
 router.post("/login", loginStaff);
 router.post("/send-otp", sendStaffLoginOtp);
 router.post("/verify-otp", verifyStaffLoginOtp);
+
+// Authenticated route to verify staff session/previous token validity
+router.get("/verify-token", protectStaff, verifyStaffToken);
 
 // Public route for Counter POS catalog (products & categories)
 router.get("/pos-catalog", getPosCatalog);
@@ -49,6 +54,7 @@ router.post("/kitchen-orders/:id/status", updateKitchenOrderStatus);
 // Role-based authenticated staff routes (Delivery staff, Kitchen, Counter)
 router.get("/orders", protectStaff, getStaffOrders);
 router.put("/orders/:id/status", protectStaff, updateStaffOrderStatus);
+router.post("/delivery-location", protectStaff, updateDeliveryLocation);
 
 // Protected routes for store owners to manage staff
 router.post("/", protect, createStaff);

@@ -722,6 +722,39 @@ export const protectStaff = async (req, res, next) => {
   }
 };
 
+// 8B. VERIFY STAFF TOKEN & SESSION (Validates previous token on startup)
+export const verifyStaffToken = async (req, res) => {
+  try {
+    const staff = req.staff;
+    const store = req.staffStore;
+
+    return res.status(200).json({
+      valid: true,
+      message: "Staff token is valid.",
+      staff: {
+        _id: staff._id,
+        name: staff.name,
+        staffId: staff.staffId,
+        role: staff.role,
+        phone: staff.phone,
+        email: staff.email,
+        status: staff.status,
+        store: {
+          _id: store._id,
+          storeId: store.storeId,
+          storeName: store.storeName,
+          storeSlug: store.storeSlug,
+          isRestaurant: store.isRestaurant,
+          storeType: store.storeType,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("[StaffController] verifyStaffToken error:", error);
+    return res.status(500).json({ message: "Server error validating staff token." });
+  }
+};
+
 // 9. GET ORDERS FOR LOGGED-IN STAFF (Role-based filtering & Manager filters)
 export const getStaffOrders = async (req, res) => {
   try {
@@ -1203,5 +1236,60 @@ export const unregisterStaffFCMToken = async (req, res) => {
   } catch (error) {
     console.error("[FCM Unregister Error]:", error);
     res.status(500).json({ message: error.message });
+  }
+};
+
+// 14. UPDATE REAL-TIME DELIVERY LOCATION (Foreground GPS Tracking)
+export const updateDeliveryLocation = async (req, res) => {
+  try {
+    const staff = req.staff;
+    const { orderId, latitude, longitude, accuracy, speed, heading, timestamp } = req.body;
+
+    if (!orderId || latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ message: "Order ID, latitude, and longitude are required." });
+    }
+
+    // 1. Verify that order exists and belongs to this staff's store
+    const order = await Order.findOne({ _id: orderId, store: staff.store._id });
+    if (!order) {
+      return res.status(404).json({ message: "Order not found in store." });
+    }
+
+    // 2. Validate that order is actively out for delivery
+    if (order.orderStatus !== "shipped") {
+      return res.status(403).json({ message: "Location tracking is only active for in-transit orders." });
+    }
+
+    // 3. Server-side authorization: verify this staff is assigned to this order
+    const isAssigned = (order.deliveryStaff && String(order.deliveryStaff) === String(staff._id)) ||
+      (order.DeliveryPersonName && order.DeliveryPersonName.toLowerCase() === staff.name.toLowerCase()) ||
+      (staff.phone && order.DeliveryPersonPhone === staff.phone) ||
+      staff.role === "manager";
+
+    if (!isAssigned) {
+      return res.status(403).json({ message: "Unauthorized. You are not assigned to this delivery." });
+    }
+
+    // 4. Update GPS coordinates
+    order.deliveryLocation = {
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+      accuracy: accuracy ? Number(accuracy) : null,
+      speed: speed ? Number(speed) : null,
+      heading: heading ? Number(heading) : null,
+      updatedAt: new Date(timestamp || Date.now()),
+    };
+
+    await order.save();
+
+    res.json({
+      success: true,
+      message: "Delivery location recorded successfully.",
+      orderId: order._id,
+      updatedAt: order.deliveryLocation.updatedAt,
+    });
+  } catch (error) {
+    console.error("updateDeliveryLocation error:", error);
+    res.status(500).json({ message: error.message || "Failed to update delivery location." });
   }
 };
