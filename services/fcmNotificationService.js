@@ -171,7 +171,104 @@ export const sendFCMNotification = async (fcmToken, { title, body, data = {}, ch
 };
 
 /**
- * Notify Kitchen Staff when a new order is received
+ * Notify Order Management / Placed Terminal Staff when a customer places a new order
+ */
+export const notifyOrderManagementNewOrder = async (store, order) => {
+  try {
+    if (!store || !order) return;
+
+    let storeMongoId = null;
+    let storeCode = "";
+
+    if (store && typeof store === 'object') {
+      if (store._id) storeMongoId = store._id.toString();
+      if (store.storeId) storeCode = store.storeId;
+    } else if (store) {
+      const clean = String(store).trim();
+      if (/^[0-9a-fA-F]{24}$/.test(clean)) {
+        storeMongoId = clean;
+      } else {
+        storeCode = clean;
+      }
+    }
+
+    const tokenQueryConditions = [];
+    if (storeMongoId) tokenQueryConditions.push({ store: storeMongoId });
+    if (storeCode) tokenQueryConditions.push({ storeId: storeCode });
+
+    // 1. Find all ordermanagement and manager staff device tokens for this store
+    const deviceTokens = tokenQueryConditions.length > 0
+      ? await StaffDeviceToken.find({
+          $or: tokenQueryConditions,
+          role: { $in: ['ordermanagement', 'manager'] }
+        })
+      : [];
+
+    // Also look up Staff model directly to catch tokens saved in fcmTokens array
+    const staffMembers = storeMongoId
+      ? await Staff.find({
+          store: storeMongoId,
+          role: { $in: ['ordermanagement', 'manager'] },
+          status: 'active'
+        }).select('fcmTokens role')
+      : [];
+
+    const tokenSet = new Set();
+    deviceTokens.forEach(d => { if (d.fcmToken) tokenSet.add(d.fcmToken); });
+    staffMembers.forEach(s => {
+      if (Array.isArray(s.fcmTokens)) {
+        s.fcmTokens.forEach(t => { if (t.token) tokenSet.add(t.token); });
+      }
+    });
+
+    let allTokens = Array.from(tokenSet);
+    console.log(`[FCM] Found ${allTokens.length} ordermanagement staff device token(s) for store: ${store?.storeName || storeCode || storeMongoId}`);
+
+    // Fallback: If no ordermanagement or manager staff has a device registered,
+    // check if this store has kitchen staff registered so the order notification is never missed
+    if (allTokens.length === 0) {
+      console.log(`[FCM] No ordermanagement staff found, falling back to kitchen staff for new order alert.`);
+      return await notifyKitchenNewOrder(store, order);
+    }
+
+    const orderShortId = order._id.toString().slice(-6).toUpperCase();
+    const orderType = order.orderType || (order.isDineIn ? 'Dine-in' : 'Delivery');
+    const resolvedStoreCode = storeCode || storeMongoId || '';
+
+    const title = `📋 New Placed Order #${orderShortId} [${orderType}]`;
+    const body = `${order.customerName || 'Customer'} placed order of ₹${order.totalAmount || 0} (${order.orderItems?.length || 0} items)`;
+    const data = {
+      type: 'NEW_ORDER_PLACED',
+      orderId: order._id.toString(),
+      orderNumber: orderShortId,
+      storeId: resolvedStoreCode,
+      role: 'ordermanagement',
+      totalAmount: String(order.totalAmount || 0),
+      url: `https://dashboard.galibrand.cloud/staff-login/placed`,
+    };
+
+    const sendPromises = allTokens.map(token =>
+      sendFCMNotification(token, {
+        title,
+        body,
+        data,
+        channelId: 'staff_orders',
+      })
+    );
+
+    const results = await Promise.allSettled(sendPromises);
+    const sentCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+    console.log(`[FCM] Successfully delivered placed order alert to ${sentCount}/${allTokens.length} ordermanagement device(s)`);
+
+    return { sent: sentCount, total: allTokens.length };
+  } catch (error) {
+    console.error('[FCM] Error notifying ordermanagement staff:', error.message);
+    return { sent: 0, error: error.message };
+  }
+};
+
+/**
+ * Notify Kitchen Staff when an order is sent to the kitchen to cook
  */
 export const notifyKitchenNewOrder = async (store, order) => {
   try {
@@ -225,10 +322,10 @@ export const notifyKitchenNewOrder = async (store, order) => {
     const orderType = order.orderType || (order.isDineIn ? 'Dine-in' : 'Delivery');
     const resolvedStoreCode = storeCode || storeMongoId || '';
 
-    const title = `🍳 New Order #${orderShortId} [${orderType}]`;
-    const body = `${order.customerName || 'Customer'} placed order of ₹${order.totalAmount || 0} (${order.orderItems?.length || 0} items)`;
+    const title = `🍳 Order to Cook #${orderShortId} [${orderType}]`;
+    const body = `Prepare order for ${order.customerName || 'Customer'} (${order.orderItems?.length || 0} items)`;
     const data = {
-      type: 'NEW_ORDER',
+      type: 'ORDER_TO_COOK',
       orderId: order._id.toString(),
       orderNumber: orderShortId,
       storeId: resolvedStoreCode,
@@ -248,7 +345,7 @@ export const notifyKitchenNewOrder = async (store, order) => {
 
     const results = await Promise.allSettled(sendPromises);
     const sentCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
-    console.log(`[FCM] Successfully delivered new order notification to ${sentCount}/${allTokens.length} kitchen device(s)`);
+    console.log(`[FCM] Successfully delivered kitchen order alert to ${sentCount}/${allTokens.length} kitchen device(s)`);
 
     return { sent: sentCount, total: allTokens.length };
   } catch (error) {

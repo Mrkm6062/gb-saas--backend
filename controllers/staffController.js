@@ -9,7 +9,7 @@ import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import { sendStaffLoginOtpEmail } from "../services/landingEmailService.js";
 import { sendStatusUpdateEmail } from "./orderController.js";
-import { notifyDeliveryStaffAssigned } from "../services/fcmNotificationService.js";
+import { notifyDeliveryStaffAssigned, notifyKitchenNewOrder } from "../services/fcmNotificationService.js";
 
 // Helper: Generate JWT for staff
 const generateStaffToken = (staff, store) => {
@@ -909,7 +909,19 @@ export const updateStaffOrderStatus = async (req, res) => {
         order.deliveredAt = new Date();
         order.paymentStatus = "paid";
       }
-      if (orderStatus === "preparing") order.preparingAt = new Date();
+      if (orderStatus === "preparing") {
+        order.preparingAt = new Date();
+
+        // Send FCM push notification to Kitchen Staff when order is sent to kitchen
+        try {
+          const storeObj = staff.store || await Store.findById(order.store);
+          if (storeObj) {
+            notifyKitchenNewOrder(storeObj, order).catch(err => {
+              console.error("[staffController] Error sending Kitchen FCM on preparing:", err.message);
+            });
+          }
+        } catch (fcmErr) {}
+      }
       if (orderStatus === "shipped") order.shippedAt = new Date();
       if (orderStatus === "canceled") {
         order.orderStatus = "canceled";
@@ -1064,6 +1076,16 @@ export const updateKitchenOrderStatus = async (req, res) => {
     if (orderStatus === "preparing") {
       order.orderStatus = "preparing";
       order.preparingAt = new Date();
+
+      // Send FCM push notification to Kitchen Staff when order is sent to kitchen
+      try {
+        const storeObj = await Store.findById(order.store);
+        if (storeObj) {
+          notifyKitchenNewOrder(storeObj, order).catch(err => {
+            console.error("[staffController] Error sending Kitchen FCM on preparing:", err.message);
+          });
+        }
+      } catch (fcmErr) {}
     } else if (orderStatus === "wasted") {
       order.orderStatus = "wasted";
       order.wastedAt = new Date();

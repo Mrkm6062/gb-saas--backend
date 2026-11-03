@@ -17,7 +17,7 @@ import Domain from "../models/Domain.js";
 import { storage } from "../gcs.js";
 import { checkIsStoreOpen } from "./storeHoursController.js";
 import { sendPushToStore } from "../services/pushNotificationService.js";
-import { notifyKitchenNewOrder, notifyDeliveryStaffAssigned } from "../services/fcmNotificationService.js";
+import { notifyKitchenNewOrder, notifyDeliveryStaffAssigned, notifyOrderManagementNewOrder } from "../services/fcmNotificationService.js";
 
 const calculateOfferDiscount = (orderItems, productsInDb) => {
   let totalB1G1Discount = 0;
@@ -530,10 +530,18 @@ export const createOrder = async (req, res) => {
       }
     }).catch(err => console.error("Error triggering push notification:", err.message));
 
-    // Send FCM push notification to Kitchen Staff mobile devices (wakes phone even if app is closed)
-    notifyKitchenNewOrder(store, order).catch(err => {
-      console.error("[orderController] Error sending Kitchen FCM notification:", err.message);
-    });
+    // Send FCM push notification:
+    // When customer places an order (status: 'placed'), notify Order Management / Placed terminal staff.
+    // If order is placed directly as 'preparing' (counter/KDS), notify Kitchen staff immediately.
+    if (order.orderStatus === "preparing") {
+      notifyKitchenNewOrder(store, order).catch(err => {
+        console.error("[orderController] Error sending Kitchen FCM notification:", err.message);
+      });
+    } else {
+      notifyOrderManagementNewOrder(store, order).catch(err => {
+        console.error("[orderController] Error sending OrderManagement FCM notification:", err.message);
+      });
+    }
 
     // Deduct stock for each ordered item
     for (const item of orderItems) {
