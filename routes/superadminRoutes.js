@@ -7,6 +7,7 @@ import { getPlatformPolicies, createOrUpdatePlatformPolicy, deletePlatformPolicy
 import { getPlatformSocialMedia, createPlatformSocialMedia, deletePlatformSocialMedia } from "../controllers/platformSocialMediaController.js";
 import { updatePlatformSettings } from "../controllers/platformSettingsController.js";
 import { protectSuperadmin } from "../middleware/superadminMiddleware.js";
+import { sendExpiredStoreAlertsManually, sendSubscriptionReminders } from "../middleware/subscriptionReminder.js";
 
 const router = express.Router();
 
@@ -40,5 +41,26 @@ router.delete("/social-media/:id", protectSuperadmin, deletePlatformSocialMedia)
 
 // Platform Settings
 router.put("/settings", protectSuperadmin, updatePlatformSettings);
+
+// Subscription Alert Triggers (Manual Superadmin Triggers)
+router.post("/subscription-alerts/send-expired", protectSuperadmin, async (req, res) => {
+  try {
+    const result = await sendExpiredStoreAlertsManually();
+    res.json(result);
+  } catch (error) {
+    console.error("Error sending manual expired store alerts:", error);
+    res.status(500).json({ message: error.message || "Failed to send expired store alerts" });
+  }
+});
+
+router.post("/subscription-alerts/run-cron-now", protectSuperadmin, async (req, res) => {
+  try {
+    const result = await sendSubscriptionReminders({ manualTrigger: true });
+    res.json(result);
+  } catch (error) {
+    console.error("Error triggering daily subscription reminders:", error);
+    res.status(500).json({ message: error.message || "Failed to trigger subscription reminders" });
+  }
+});
 
 export default router;
