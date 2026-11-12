@@ -42,8 +42,24 @@ router.delete("/social-media/:id", protectSuperadmin, deletePlatformSocialMedia)
 // Platform Settings
 router.put("/settings", protectSuperadmin, updatePlatformSettings);
 
+// Subscription Alert Status Check
+router.get("/subscription-alerts/status", protectSuperadmin, (req, res) => {
+  res.json({ success: true, message: "Subscription alerts service is active" });
+});
+
 // Subscription Alert Triggers (Manual Superadmin Triggers)
 router.post("/subscription-alerts/send-expired", protectSuperadmin, async (req, res) => {
+  try {
+    const result = await sendExpiredStoreAlertsManually();
+    res.json(result);
+  } catch (error) {
+    console.error("Error sending manual expired store alerts:", error);
+    res.status(500).json({ message: error.message || "Failed to send expired store alerts" });
+  }
+});
+
+// Alias for send-expired
+router.post("/send-expired-alerts", protectSuperadmin, async (req, res) => {
   try {
     const result = await sendExpiredStoreAlertsManually();
     res.json(result);
