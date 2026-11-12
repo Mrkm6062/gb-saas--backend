@@ -39,7 +39,8 @@ import deliveryRoutes from "./routes/deliveryRoutes.js";
 import checkoutRoutes from "./routes/checkoutRoutes.js";
 import { getPublicOrder, sendCustomerOtp, verifyCustomerOtp, getCustomerOrders } from "./controllers/orderController.js";
 import platformPaymentRoutes from "./routes/platformPaymentRoutes.js";
-import { startSubscriptionReminderCron } from "./middleware/subscriptionReminder.js";
+import { startSubscriptionReminderCron, sendExpiredStoreAlertsManually, sendSubscriptionReminders } from "./middleware/subscriptionReminder.js";
+import { protectSuperadmin } from "./middleware/superadminMiddleware.js";
 import { startCleanupDeletedStoresCron } from "./middleware/cleanupDeletedStores.js";
 import { startCleanupCustomImagesCron } from "./middleware/cleanupCustomImages.js";
 import defaultProductRoutes from "./routes/defaultProductRoutes.js";
@@ -199,6 +200,35 @@ app.use("/api/products", productRoutes); // Admin product management
 app.use("/api/default-products", defaultProductRoutes); // Default products catalog
 app.use("/api/superadmin/themes", superadminThemeRoutes); // Superadmin Theme Management
 app.use("/api/superadmin/default-products", superadminDefaultProductRoutes); // Superadmin Default Products
+// Direct routes for superadmin subscription alerts
+app.post("/api/superadmin/subscription-alerts/send-expired", protectSuperadmin, async (req, res) => {
+  try {
+    const result = await sendExpiredStoreAlertsManually();
+    res.json(result);
+  } catch (error) {
+    console.error("Error sending manual expired store alerts:", error);
+    res.status(500).json({ message: error.message || "Failed to send expired store alerts" });
+  }
+});
+app.post("/api/superadmin/send-expired-alerts", protectSuperadmin, async (req, res) => {
+  try {
+    const result = await sendExpiredStoreAlertsManually();
+    res.json(result);
+  } catch (error) {
+    console.error("Error sending manual expired store alerts:", error);
+    res.status(500).json({ message: error.message || "Failed to send expired store alerts" });
+  }
+});
+app.post("/api/superadmin/subscription-alerts/run-cron-now", protectSuperadmin, async (req, res) => {
+  try {
+    const result = await sendSubscriptionReminders({ manualTrigger: true });
+    res.json(result);
+  } catch (error) {
+    console.error("Error triggering daily subscription reminders:", error);
+    res.status(500).json({ message: error.message || "Failed to trigger subscription reminders" });
+  }
+});
+
 app.use("/api/superadmin", superadminRoutes); // Superadmin access
 app.use("/api/staff", superadminStaffRoutes); // Superadmin Staff Management
 app.use("/api/staff-performance", superadminStaffPerformanceRoutes); // Staff Performance Routes
