@@ -49,7 +49,7 @@ export const getRobotsText = async (req, res) => {
   try {
     if (!req.store) {
       // Fallback for platform root
-      return res.send("User-agent: *\nDisallow: /api\nDisallow: /dashboard\nSitemap: https://galibrand.cloud/sitemap.xml");
+      return res.send("User-agent: *\nAllow: /api/categories/public\nAllow: /api/custom-pages/homepage\nAllow: /api/store/data\nAllow: /api/store/tenant/info\nAllow: /api/store/tenant/products\nDisallow: /api/\nDisallow: /dashboard\nSitemap: https://galibrand.cloud/sitemap.xml");
     }
 
     const seo = req.store.seoSettings || {};
