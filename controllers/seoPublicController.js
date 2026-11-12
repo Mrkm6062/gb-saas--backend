@@ -57,13 +57,21 @@ export const getRobotsText = async (req, res) => {
 
     let robotsContent = "";
 
-    // 1. General Indexing Policy
-    if (seo.indexWebsite === false) {
-      robotsContent += "User-agent: *\nDisallow: /\n";
-    } else {
-      robotsContent += "User-agent: *\nAllow: /\nDisallow: /track\nDisallow: /cart\n";
-    }
-
+// 1. General Indexing Policy
+if (seo.indexWebsite === false) {
+  robotsContent += "User-agent: *\nDisallow: /\n";
+} else {
+  robotsContent +=
+    "User-agent: *\n" +
+    "Allow: /\n" +
+    "Allow: /api/categories/public\n" +
+    "Allow: /api/custom-pages/homepage\n" +
+    "Allow: /api/store/data\n" +
+    "Allow: /api/store/tenant/info\n" +
+    "Allow: /api/store/tenant/products\n" +
+    "Disallow: /track\n" +
+    "Disallow: /cart\n";
+}
     // 2. Specific AI Bots block directives
     const aiBots = [
       { key: "blockGPTBot", name: "GPTBot" },
