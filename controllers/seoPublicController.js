@@ -44,11 +44,16 @@ const resolveStoreDomain = async (store, req) => {
 // GET /robots.txt
 export const getRobotsText = async (req, res) => {
   res.type("text/plain");
-  res.setHeader("Cache-Control", "public, max-age=3600"); // 1 hour Cache
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
 
   try {
-    if (!req.store) {
-      // Fallback for platform root
+    const host = req.headers['x-forwarded-host'] || req.headers.host || "";
+    const hostname = host.split(":")[0].toLowerCase();
+
+    if (hostname === "api.galibrand.cloud" || !req.store) {
+      // Fallback for platform root / api.galibrand.cloud
       return res.send("User-agent: *\nAllow: /api/categories/public\nAllow: /api/custom-pages/homepage\nAllow: /api/store/data\nAllow: /api/store/tenant/info\nAllow: /api/store/tenant/products\nDisallow: /api/\nDisallow: /dashboard\nSitemap: https://galibrand.cloud/sitemap.xml");
     }
 
