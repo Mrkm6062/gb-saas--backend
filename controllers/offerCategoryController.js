@@ -7,7 +7,9 @@ export const getOfferCategories = async (req, res) => {
     const { storeId } = req.query;
     if (!storeId) return res.status(400).json({ message: "Store ID is required" });
 
-    const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId });
+    const storeQuery = { _id: storeId };
+    if (req.user.role !== 'superadmin') storeQuery.ownerId = req.user.userId;
+    const store = await Store.findOne(storeQuery);
     if (!store) return res.status(403).json({ message: "Not authorized" });
 
     const offerCategories = await OfferCategory.find({ store: storeId }).sort({ priority: -1, createdAt: -1 });
@@ -29,7 +31,9 @@ export const createOfferCategory = async (req, res) => {
       return res.status(400).json({ message: "Store ID and Category Name are required" });
     }
 
-    const store = await Store.findOne({ _id: storeId, ownerId: req.user.userId });
+    const storeQuery = { _id: storeId };
+    if (req.user.role !== 'superadmin') storeQuery.ownerId = req.user.userId;
+    const store = await Store.findOne(storeQuery);
     if (!store) return res.status(403).json({ message: "Not authorized" });
 
     // Generate slug
@@ -72,7 +76,9 @@ export const updateOfferCategory = async (req, res) => {
     const offerCategory = await OfferCategory.findById(req.params.id);
     if (!offerCategory) return res.status(404).json({ message: "Offer Category not found" });
 
-    const store = await Store.findOne({ _id: offerCategory.store, ownerId: req.user.userId });
+    const storeQuery = { _id: offerCategory.store };
+    if (req.user.role !== 'superadmin') storeQuery.ownerId = req.user.userId;
+    const store = await Store.findOne(storeQuery);
     if (!store) return res.status(403).json({ message: "Not authorized" });
 
     if (name) {
@@ -104,7 +110,9 @@ export const deleteOfferCategory = async (req, res) => {
     const offerCategory = await OfferCategory.findById(req.params.id);
     if (!offerCategory) return res.status(404).json({ message: "Offer Category not found" });
 
-    const store = await Store.findOne({ _id: offerCategory.store, ownerId: req.user.userId });
+    const storeQuery = { _id: offerCategory.store };
+    if (req.user.role !== 'superadmin') storeQuery.ownerId = req.user.userId;
+    const store = await Store.findOne(storeQuery);
     if (!store) return res.status(403).json({ message: "Not authorized" });
 
     await offerCategory.deleteOne();
