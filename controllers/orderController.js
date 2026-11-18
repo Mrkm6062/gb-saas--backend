@@ -636,12 +636,14 @@ export const verifyRazorpayPayment = async (req, res) => {
 export const sendCustomerOtp = async (req, res) => {
   try {
     const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
     if (!req.store) return res.status(400).json({ message: "Store context missing" });
     const storeId = req.store._id;
 
     const config = await StoreAlerts.findOne({ storeId });
-    if (!config || !config.isEmailEnabled || !config.emailAddress || !config.appPassword) {
-      return res.status(400).json({ message: "Store owner has not configured email alerts. Please contact support." });
+    const mailer = await resolveStoreMailTransporter(req.store, config);
+    if (!mailer) {
+      return res.status(500).json({ message: "Email service is temporarily unavailable. Please try again later." });
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -649,13 +651,8 @@ export const sendCustomerOtp = async (req, res) => {
     await CustomerOTP.findOneAndDelete({ email, storeId });
     await CustomerOTP.create({ email, storeId, otp });
 
-    const transporter = nodemailer.createTransport({
-      host: config.smtpHost, port: config.smtpPort, secure: config.smtpPort === 465,
-      auth: { user: config.emailAddress, pass: config.appPassword }
-    });
-
-    await transporter.sendMail({
-      from: `"${req.store.storeName}" <${config.emailAddress}>`,
+    await mailer.transporter.sendMail({
+      from: mailer.fromAddress,
       to: email,
       subject: `Verification Code - ${req.store.storeName}`,
       html: `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333; text-align: center;">
@@ -668,6 +665,7 @@ export const sendCustomerOtp = async (req, res) => {
 
     res.json({ message: "OTP sent" });
   } catch (error) {
+    console.error("sendCustomerOtp error:", error);
     res.status(500).json({ message: error.message });
   }
 };

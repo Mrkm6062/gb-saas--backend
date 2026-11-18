@@ -7,7 +7,7 @@ import StoreAlerts from "../models/StoreAlerts.js";
 import StaffDeviceToken from "../models/StaffDeviceToken.js";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
-import { sendStaffLoginOtpEmail } from "../services/landingEmailService.js";
+import { sendStaffLoginOtpEmail, getLandingMailConfigAndTransporter } from "../services/landingEmailService.js";
 import { sendStatusUpdateEmail } from "./orderController.js";
 import { notifyDeliveryStaffAssigned, notifyKitchenNewOrder } from "../services/fcmNotificationService.js";
 
@@ -273,6 +273,8 @@ export const loginStaff = async (req, res) => {
           storeId: store.storeId,
           storeName: store.storeName,
           storeSlug: store.storeSlug,
+          subdomain: store.subdomain,
+          customDomain: store.customDomain,
           storeType: store.storeType || "",
           logo: store.logo,
           locationAddress: store.locationAddress,
@@ -427,6 +429,8 @@ export const verifyStaffLoginOtp = async (req, res) => {
           storeId: store.storeId,
           storeName: store.storeName,
           storeSlug: store.storeSlug,
+          subdomain: store.subdomain,
+          customDomain: store.customDomain,
           storeType: store.storeType || "",
           logo: store.logo,
           locationAddress: store.locationAddress,
@@ -461,18 +465,28 @@ export const sendDigitalBillEmail = async (req, res) => {
     const store = order.store;
     const config = await StoreAlerts.findOne({ storeId: store._id });
 
-    if (!config || !config.isEmailEnabled || !config.emailAddress || !config.appPassword) {
-      return res.status(400).json({
-        message: "Email alerts are not configured for this store. Please configure SMTP email settings in Store Settings > Alerts & Emails.",
-      });
-    }
+    let transporter;
+    let fromEmail;
 
-    const transporter = nodemailer.createTransport({
-      host: config.smtpHost,
-      port: config.smtpPort,
-      secure: config.smtpPort === 465,
-      auth: { user: config.emailAddress, pass: config.appPassword },
-    });
+    if (config && config.isEmailEnabled && config.emailAddress && config.appPassword) {
+      transporter = nodemailer.createTransport({
+        host: config.smtpHost || "smtp.gmail.com",
+        port: Number(config.smtpPort) || 587,
+        secure: Number(config.smtpPort) === 465,
+        auth: { user: config.emailAddress, pass: config.appPassword },
+      });
+      fromEmail = `"${store.storeName}" <${config.emailAddress}>`;
+    } else {
+      const defaultMailer = await getLandingMailConfigAndTransporter();
+      if (!defaultMailer) {
+        return res.status(400).json({
+          message: "Email alerts are not configured. Please configure SMTP email settings in Store Settings > Alerts & Emails.",
+        });
+      }
+      transporter = defaultMailer.transporter;
+      const senderEmail = defaultMailer.config.fromEmail || defaultMailer.config.smtpUser;
+      fromEmail = `"${store.storeName}" <${senderEmail}>`;
+    }
 
     const itemsRows = order.orderItems
       .map(
@@ -587,7 +601,7 @@ export const sendDigitalBillEmail = async (req, res) => {
     `;
 
     await transporter.sendMail({
-      from: `"${store.storeName}" <${config.emailAddress}>`,
+      from: fromEmail,
       to: customerEmail.trim(),
       subject: `🧾 Digital Invoice #${orderNumber} from ${store.storeName}`,
       html: emailHtml,
@@ -680,6 +694,9 @@ export const getPosCatalog = async (req, res) => {
         _id: store._id,
         storeId: store.storeId,
         storeName: store.storeName,
+        storeSlug: store.storeSlug,
+        subdomain: store.subdomain,
+        customDomain: store.customDomain,
         logo: store.logo,
         tables: store.tables || ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
         isRestaurant: store.isRestaurant,
