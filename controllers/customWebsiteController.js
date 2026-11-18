@@ -5,17 +5,45 @@ import path from "path";
 const bucket = storage.bucket(process.env.GCS_BUCKET);
 
 // Verify user has ownership of the target store
-const verifyStoreOwner = async (storeId, userId, role) => {
-  if (!storeId) return null;
-  const isMongoId = /^[0-9a-fA-F]{24}$/.test(storeId);
-  const storeQuery = isMongoId
-    ? { $or: [{ _id: storeId }, { storeId: storeId }] }
-    : { storeId: storeId };
-
-  if (role !== "superadmin") {
-    storeQuery.ownerId = userId ? userId.toString() : null;
+const verifyStoreOwner = async (storeIdentifier, user) => {
+  if (!storeIdentifier || storeIdentifier === "undefined" || storeIdentifier === "null") {
+    return null;
   }
-  const store = await Store.findOne(storeQuery);
+  const cleanId = String(storeIdentifier).trim();
+  const isMongoId = /^[0-9a-fA-F]{24}$/.test(cleanId);
+
+  const idQuery = isMongoId
+    ? [{ _id: cleanId }, { storeId: cleanId }, { storeSlug: cleanId }]
+    : [{ storeId: cleanId }, { storeSlug: cleanId }];
+
+  // SuperAdmin has full bypass access
+  if (user && user.role === "superadmin") {
+    return await Store.findOne({ $or: idQuery });
+  }
+
+  // Build all possible owner IDs (both custom string userId and Mongo _id)
+  const possibleOwnerIds = [
+    user?.userId,
+    user?._id,
+    user?._id ? String(user._id) : null,
+    user?.userId ? String(user.userId) : null
+  ].filter(Boolean);
+
+  const store = await Store.findOne({
+    $and: [
+      { $or: idQuery },
+      { ownerId: { $in: possibleOwnerIds } }
+    ]
+  });
+
+  if (!store) {
+    console.warn(`[CustomWebsite] Ownership check failed for storeIdentifier: "${storeIdentifier}"`, {
+      userId: user?.userId,
+      _id: user?._id,
+      role: user?.role
+    });
+  }
+
   return store;
 };
 
@@ -108,7 +136,7 @@ export const uploadWebsiteFiles = async (req, res) => {
       return res.status(400).json({ message: "Store ID is required." });
     }
 
-    const store = await verifyStoreOwner(storeId, req.user?._id || req.user?.userId, req.user?.role);
+    const store = await verifyStoreOwner(storeId, req.user);
     if (!store) {
       return res.status(403).json({ message: "Unauthorized store access." });
     }
@@ -214,7 +242,7 @@ export const getWebsiteFiles = async (req, res) => {
       return res.status(400).json({ message: "Store ID is required." });
     }
 
-    const store = await verifyStoreOwner(storeId, req.user?._id || req.user?.userId, req.user?.role);
+    const store = await verifyStoreOwner(storeId, req.user);
     if (!store) {
       return res.status(403).json({ message: "Unauthorized store access." });
     }
@@ -299,7 +327,7 @@ export const deleteWebsiteFile = async (req, res) => {
       return res.status(400).json({ message: "Store ID and filePath are required." });
     }
 
-    const store = await verifyStoreOwner(storeId, req.user?._id || req.user?.userId, req.user?.role);
+    const store = await verifyStoreOwner(storeId, req.user);
     if (!store) {
       return res.status(403).json({ message: "Unauthorized store access." });
     }
@@ -354,7 +382,7 @@ export const deleteEntireWebsite = async (req, res) => {
       return res.status(400).json({ message: "Store ID is required." });
     }
 
-    const store = await verifyStoreOwner(storeId, req.user?._id || req.user?.userId, req.user?.role);
+    const store = await verifyStoreOwner(storeId, req.user);
     if (!store) {
       return res.status(403).json({ message: "Unauthorized store access." });
     }
