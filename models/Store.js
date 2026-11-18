@@ -45,6 +45,13 @@ const storeSchema = new mongoose.Schema({
   tables: { type: [String], default: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"] },
   isRestaurant: { type: Boolean, default: false },
   dineInEnabled: { type: Boolean, default: true },
+  customWebsite: {
+    enabled: { type: Boolean, default: false },
+    entryPoint: { type: String, default: "index.html" },
+    filesCount: { type: Number, default: 0 },
+    totalSizeBytes: { type: Number, default: 0 },
+    updatedAt: { type: Date }
+  },
   isDeleted: { type: Boolean, default: false },
   deletedAt: { type: Date },
   seoSettings: {

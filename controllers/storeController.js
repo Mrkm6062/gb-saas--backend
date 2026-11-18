@@ -556,6 +556,15 @@ export const getStoreData = async (req, res) => {
       storeObj.pwa = { enabled: false };
     }
 
+    // Attach Custom Website settings
+    storeObj.customWebsite = storeObj.customWebsite || { enabled: false, entryPoint: "index.html", filesCount: 0 };
+    const isCustomWebsiteType = storeObj.storeType === "Custom Website(HTML,CSS,JS)" || Boolean(storeObj.storeType && storeObj.storeType.toLowerCase().includes("custom website"));
+    if (storeObj.customWebsite.enabled || isCustomWebsiteType) {
+      const storeFolder = storeObj.storeSlug || storeObj.storeId;
+      storeObj.customWebsite.baseUrl = `https://storage.googleapis.com/${process.env.GCS_BUCKET}/${storeFolder}/custom-website/`;
+      storeObj.customWebsite.entryUrl = `https://storage.googleapis.com/${process.env.GCS_BUCKET}/${storeFolder}/custom-website/${storeObj.customWebsite.entryPoint || 'index.html'}`;
+    }
+
     const isRestaurantType = Boolean(storeObj.isRestaurant || (storeObj.storeType && /restaurant|cafe|food|dine|bistro|dhaba|eatery|nasta|nashta|cloud\s*kitchen/i.test(storeObj.storeType)));
     storeObj.isRestaurant = isRestaurantType;
     if (!storeObj.tables || !Array.isArray(storeObj.tables) || storeObj.tables.length === 0) {
