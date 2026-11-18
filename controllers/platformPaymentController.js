@@ -1,3 +1,4 @@
+import { recordCouponUsage } from "./galicouponcontroller.js";
 import PlatformPaymentSettings from "../models/PlatformPaymentSettings.js";
 import Store from "../models/Store.js";
 import Razorpay from "razorpay";
@@ -93,7 +94,7 @@ export const createSubscriptionOrder = async (req, res) => {
 
 export const verifyPayment = async (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, storeId, planId, billingDuration } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, storeId, planId, billingDuration, couponCode } = req.body;
     const settings = await PlatformPaymentSettings.findOne();
 
     const keySecret = decrypt(settings.razorpayKeySecret);

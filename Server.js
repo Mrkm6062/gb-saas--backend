@@ -34,6 +34,7 @@ import platformSocialMediaRoutes from "./routes/platformSocialMediaRoutes.js";
 import domainRoutes from "./routes/domainRoutes.js";
 import { getPlatformSettings } from "./controllers/platformSettingsController.js";
 import couponRoutes from "./routes/couponRoutes.js";
+import galiCouponRoutes from "./routes/galicouponroutes.js";
 import storeAlertsRoutes from "./routes/storeAlertsRoutes.js";
 import customerRoutes from "./routes/customerRoutes.js";
 import deliveryRoutes from "./routes/deliveryRoutes.js";
@@ -255,6 +256,8 @@ app.use("/api/platform-social-media", platformSocialMediaRoutes); // Global plat
 app.use("/api/domains", domainRoutes); // Custom domain manager
 app.use("/api/platform-settings", getPlatformSettings); // Public platform settings
 app.use("/api/coupons", couponRoutes); // Coupons for stores
+app.use("/api/galicoupons", galiCouponRoutes); // Platform GaliCoupons
+app.use("/api/superadmin/coupons", galiCouponRoutes);
 app.use("/api/store-alerts", storeAlertsRoutes); // Custom Store Email Alerts
 app.use("/api/customers", customerRoutes); // Customer Management & Notes
 app.use("/api/delivery-settings", deliveryRoutes); // Delivery Settings

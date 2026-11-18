@@ -1,3 +1,4 @@
+import { recordCouponUsage } from "./galicouponcontroller.js";
 import { sendNewStoreCreatedAlert } from "../services/platformNotificationService.js";
 import Store from "../models/Store.js";
 import Counter from "../models/Counter.js";
@@ -45,7 +46,7 @@ export const verifyEmployee = async (req, res) => {
 // CREATE NEW STORE
 export const createStore = async (req, res) => {
   try {
-    const { name, storeType, metaDescription, planId, empId, storeSlug: customSlug, billingDuration, billingCycle } = req.body;
+    const { name, storeType, metaDescription, planId, empId, storeSlug: customSlug, billingDuration, billingCycle, couponCode } = req.body;
 
     // Prevent undefined.toLowerCase() crash
     if (!name || typeof name !== 'string') {
