@@ -172,6 +172,7 @@ export const uploadWebsiteFiles = async (req, res) => {
         hasIndex = true;
       }
 
+      const isHtml = relPath.toLowerCase().endsWith(".html") || relPath.toLowerCase().endsWith(".htm");
       const gcsPath = `${storeFolder}/custom-website/${relPath}`;
       const contentType = getMimeType(relPath);
       const blob = bucket.file(gcsPath);
@@ -179,7 +180,7 @@ export const uploadWebsiteFiles = async (req, res) => {
       await blob.save(file.buffer, {
         metadata: {
           contentType: contentType,
-          cacheControl: "public, max-age=3600",
+          cacheControl: isHtml ? "no-cache, no-store, must-revalidate" : "public, max-age=3600",
         },
         resumable: false,
       });
@@ -462,8 +463,9 @@ export const servePublicWebsiteFile = async (req, res) => {
     }
 
     const contentType = getMimeType(requestedPath);
+    const isHtml = requestedPath.endsWith(".html") || requestedPath.endsWith(".htm");
     res.setHeader("Content-Type", contentType);
-    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.setHeader("Cache-Control", isHtml ? "no-cache, no-store, must-revalidate" : "public, max-age=3600");
     res.setHeader("Access-Control-Allow-Origin", "*");
 
     const readStream = file.createReadStream();
