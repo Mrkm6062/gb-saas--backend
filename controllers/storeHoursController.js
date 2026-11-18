@@ -239,14 +239,137 @@ export const updateStoreHours = async (req, res) => {
 };
 
 // Calculate next opening day and time
-export const getNextOpeningTime = (storeHours, localDate, dateStr, tz) => {
+export const getNextOpeningTime = (storeHours, localDate, timeStr, dateStr, tz) => {
   const daysOfWeek = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-  
+  const currentMinutes = timeToMinutes(timeStr);
+
+  const tzFormattedTime = (hhmm) => {
+    try {
+      const [h, m] = hhmm.split(':').map(Number);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const displayHour = h % 12 || 12;
+      return `${displayHour}:${String(m).padStart(2, '0')} ${ampm}`;
+    } catch(e) {
+      return hhmm;
+    }
+  };
+
+  const buildTargetIso = (dateString, openTimeString) => {
+    try {
+      const [year, month, day] = dateString.split('-').map(Number);
+      const [hours, minutes] = openTimeString.split(':').map(Number);
+      const guess = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+      const invdate = new Date(guess.toLocaleString('en-US', { timeZone: tz }));
+      const diff = guess.getTime() - invdate.getTime();
+      const targetDate = new Date(guess.getTime() + diff);
+
+      return {
+        targetIso: targetDate.toISOString(),
+        targetTimestamp: targetDate.getTime()
+      };
+    } catch(err) {
+      return {
+        targetIso: `${dateString}T${openTimeString}:00`,
+        targetTimestamp: null
+      };
+    }
+  };
+
+  // 1. Check if store opens LATER TODAY (day 0)
+  let todayBlocked = false;
+
+  // A. Check Temporary Closure
+  if (storeHours.temporaryClosure?.enabled) {
+    const start = storeHours.temporaryClosure.startDate;
+    const end = storeHours.temporaryClosure.endDate;
+    const now = new Date();
+    if ((!start || now >= start) && (!end || now <= end)) {
+      todayBlocked = true;
+    }
+  }
+
+  // B. Check Holiday today
+  if (!todayBlocked && storeHours.holidays && storeHours.holidays.length > 0) {
+    const holidayMatch = storeHours.holidays.find(h => {
+      if (!h.date) return false;
+      const hDateStr = new Date(h.date).toISOString().split('T')[0];
+      return hDateStr === dateStr;
+    });
+    if (holidayMatch) {
+      if (holidayMatch.closed) {
+        todayBlocked = true;
+      } else if (holidayMatch.slots && holidayMatch.slots.length > 0) {
+        const nextSlot = holidayMatch.slots.find(slot => timeToMinutes(slot.open) > currentMinutes);
+        if (nextSlot) {
+          const { targetIso, targetTimestamp } = buildTargetIso(dateStr, nextSlot.open);
+          return {
+            day: "Today",
+            date: dateStr,
+            time: tzFormattedTime(nextSlot.open),
+            openTime: nextSlot.open,
+            targetIso,
+            targetTimestamp
+          };
+        } else {
+          todayBlocked = true;
+        }
+      }
+    }
+  }
+
+  // C. Check Special Hours today
+  if (!todayBlocked && storeHours.specialHours && storeHours.specialHours.length > 0) {
+    const now = new Date();
+    const specialMatch = storeHours.specialHours.find(s => {
+      return s.startDate && s.endDate && now >= s.startDate && now <= s.endDate;
+    });
+    if (specialMatch) {
+      if (specialMatch.closed) {
+        todayBlocked = true;
+      } else if (specialMatch.slots && specialMatch.slots.length > 0) {
+        const nextSlot = specialMatch.slots.find(slot => timeToMinutes(slot.open) > currentMinutes);
+        if (nextSlot) {
+          const { targetIso, targetTimestamp } = buildTargetIso(dateStr, nextSlot.open);
+          return {
+            day: "Today",
+            date: dateStr,
+            time: tzFormattedTime(nextSlot.open),
+            openTime: nextSlot.open,
+            targetIso,
+            targetTimestamp
+          };
+        } else {
+          todayBlocked = true;
+        }
+      }
+    }
+  }
+
+  // D. Check Custom Weekly Schedule today
+  if (!todayBlocked && storeHours.mode === 'custom') {
+    const todayName = daysOfWeek[localDate.getDay()];
+    const todaySched = storeHours.weeklySchedule?.find(s => s.day === todayName);
+    if (todaySched && todaySched.enabled && todaySched.slots && todaySched.slots.length > 0) {
+      const nextSlot = todaySched.slots.find(slot => timeToMinutes(slot.open) > currentMinutes);
+      if (nextSlot) {
+        const { targetIso, targetTimestamp } = buildTargetIso(dateStr, nextSlot.open);
+        return {
+          day: "Today",
+          date: dateStr,
+          time: tzFormattedTime(nextSlot.open),
+          openTime: nextSlot.open,
+          targetIso,
+          targetTimestamp
+        };
+      }
+    }
+  }
+
+  // 2. Check Upcoming Days (i = 1 to 7)
   for (let i = 1; i <= 7; i++) {
     const checkDate = new Date(localDate);
     checkDate.setDate(checkDate.getDate() + i);
-    
-    // Format checkDate in target timezone
+
     try {
       const formatter = new Intl.DateTimeFormat('en-US', {
         timeZone: tz,
@@ -264,7 +387,7 @@ export const getNextOpeningTime = (storeHours, localDate, dateStr, tz) => {
       const checkDateStr = `${year}-${month}-${day}`;
       const tempDate = new Date(`${year}-${month}-${day}T00:00:00`);
       const checkDayName = daysOfWeek[tempDate.getDay()];
-      
+
       // A. Check Temporary Closure
       if (storeHours.temporaryClosure?.enabled) {
         const start = storeHours.temporaryClosure.startDate;
@@ -273,7 +396,7 @@ export const getNextOpeningTime = (storeHours, localDate, dateStr, tz) => {
           continue; // Closed this day
         }
       }
-      
+
       // B. Check Holiday
       if (storeHours.holidays && storeHours.holidays.length > 0) {
         const holidayMatch = storeHours.holidays.find(h => {
@@ -281,36 +404,48 @@ export const getNextOpeningTime = (storeHours, localDate, dateStr, tz) => {
           const hDateStr = new Date(h.date).toISOString().split('T')[0];
           return hDateStr === checkDateStr;
         });
-        if (holidayMatch && holidayMatch.closed) {
-          continue; // Closed this day
+        if (holidayMatch) {
+          if (holidayMatch.closed) continue;
+          if (holidayMatch.slots && holidayMatch.slots.length > 0) {
+            const openTime = holidayMatch.slots[0].open;
+            const { targetIso, targetTimestamp } = buildTargetIso(checkDateStr, openTime);
+            return {
+              day: i === 1 ? "Tomorrow" : checkDayName.charAt(0).toUpperCase() + checkDayName.slice(1),
+              date: `${day}/${month}/${year}`,
+              time: tzFormattedTime(openTime),
+              openTime,
+              targetIso,
+              targetTimestamp
+            };
+          }
         }
       }
-      
+
       // C. Weekly Schedule
       if (storeHours.mode === '24x7') {
+        const { targetIso, targetTimestamp } = buildTargetIso(checkDateStr, "00:00");
         return {
           day: i === 1 ? "Tomorrow" : checkDayName.charAt(0).toUpperCase() + checkDayName.slice(1),
           date: `${day}/${month}/${year}`,
-          time: "12:00 AM"
+          time: "12:00 AM",
+          openTime: "00:00",
+          targetIso,
+          targetTimestamp
         };
       }
-      
+
       if (storeHours.mode === 'custom') {
         const daySched = storeHours.weeklySchedule?.find(s => s.day === checkDayName);
         if (daySched && daySched.enabled && daySched.slots && daySched.slots.length > 0) {
           const openTime = daySched.slots[0].open;
-          let formattedTime = openTime;
-          try {
-            const [h, m] = openTime.split(':').map(Number);
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            const displayHour = h % 12 || 12;
-            formattedTime = `${displayHour}:${String(m).padStart(2, '0')} ${ampm}`;
-          } catch(e) {}
-          
+          const { targetIso, targetTimestamp } = buildTargetIso(checkDateStr, openTime);
           return {
             day: i === 1 ? "Tomorrow" : checkDayName.charAt(0).toUpperCase() + checkDayName.slice(1),
             date: `${day}/${month}/${year}`,
-            time: formattedTime
+            time: tzFormattedTime(openTime),
+            openTime,
+            targetIso,
+            targetTimestamp
           };
         }
       }
@@ -318,7 +453,7 @@ export const getNextOpeningTime = (storeHours, localDate, dateStr, tz) => {
       console.error(err);
     }
   }
-  
+
   return null;
 };
 
@@ -336,8 +471,8 @@ export const getPublicStoreStatus = async (req, res) => {
       const storeHours = await StoreHours.findOne({ storeId });
       if (storeHours) {
         const tz = storeHours.timezone || "Asia/Kolkata";
-        const { date: localDate, dateStr } = getStoreCurrentTime(tz);
-        const nextOpen = getNextOpeningTime(storeHours, localDate, dateStr, tz);
+        const { date: localDate, timeStr, dateStr } = getStoreCurrentTime(tz);
+        const nextOpen = getNextOpeningTime(storeHours, localDate, timeStr, dateStr, tz);
         status.nextOpen = nextOpen;
       }
     }
