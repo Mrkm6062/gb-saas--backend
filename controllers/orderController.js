@@ -741,7 +741,15 @@ export const getPublicOrder = async (req, res) => {
       ShippingTrackingNumber: order.ShippingTrackingNumber,
       ShippingCompany: order.ShippingCompany,
       DeliveryPersonName: order.DeliveryPersonName,
-      DeliveryPersonPhone: order.DeliveryPersonPhone
+      DeliveryPersonPhone: order.DeliveryPersonPhone,
+      preparedBy: order.preparedBy,
+      preparingAt: order.preparingAt,
+      shippedAt: order.shippedAt,
+      deliveredAt: order.deliveredAt,
+      wastedAt: order.wastedAt,
+      wastedReason: order.wastedReason,
+      canceledAt: order.canceledAt,
+      cancelReason: order.cancelReason
     };
 
     res.json(safeOrder);
@@ -879,6 +887,7 @@ export const updateOrderStatus = async (req, res) => {
     if (ShippingCompany !== undefined) order.ShippingCompany = ShippingCompany;
     if (DeliveryPersonName !== undefined) order.DeliveryPersonName = DeliveryPersonName;
     if (DeliveryPersonPhone !== undefined) order.DeliveryPersonPhone = DeliveryPersonPhone;
+    if (req.body.preparedBy !== undefined) order.preparedBy = req.body.preparedBy;
     if (req.body.orderConfirmed !== undefined) order.orderConfirmed = req.body.orderConfirmed;
 
     // Clean up Google Cloud Storage if the order is cancelled

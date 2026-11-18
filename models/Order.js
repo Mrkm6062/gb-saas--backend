@@ -77,6 +77,11 @@ const orderSchema = new mongoose.Schema(
       default: "",
     },
 
+    preparedBy: {
+      type: String,
+      default: "",
+    },
+
     deliveryStaff: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Staff",

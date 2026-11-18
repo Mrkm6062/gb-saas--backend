@@ -902,6 +902,7 @@ export const updateStaffOrderStatus = async (req, res) => {
       if (orderStatus === "preparing") {
         order.orderStatus = "preparing";
         order.preparingAt = new Date();
+        if (staff && staff.name) order.preparedBy = staff.name;
       } else if (orderStatus === "wasted") {
         order.orderStatus = "wasted";
         order.wastedAt = new Date();
@@ -928,8 +929,10 @@ export const updateStaffOrderStatus = async (req, res) => {
       }
       if (orderStatus === "preparing") {
         order.preparingAt = new Date();
+      if (req.body.preparedBy) order.preparedBy = req.body.preparedBy;
+      else if (req.staff && req.staff.name) order.preparedBy = req.staff.name;
 
-        // Send FCM push notification to Kitchen Staff when order is sent to kitchen
+      // Send FCM push notification to Kitchen Staff when order is sent to kitchen
         try {
           const storeObj = staff.store || await Store.findById(order.store);
           if (storeObj) {
