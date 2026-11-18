@@ -104,6 +104,14 @@ const platformSettingsSchema = new mongoose.Schema({
   },
 
   // 🔹 SUBSCRIPTION EXPIRED ALERT TEMPLATE (Store subscription is expired)
+  supportNotificationEmail: {
+    type: String,
+    default: "support@galibrand.cloud"
+  },
+  createStoreReminderTemplate: {
+    type: String,
+    default: ""
+  },
   subscriptionExpiredTemplate: {
     type: String,
     default: `<div style="font-family: Arial, Helvetica, sans-serif; background-color: #f4f7f6; padding: 30px 15px; color: #333333;">

@@ -1,3 +1,4 @@
+import { DEFAULT_CREATE_STORE_REMINDER_TEMPLATE } from "../services/platformNotificationService.js";
 import PlatformSettings from "../models/PlatformSettings.js";
 
 // GET PLATFORM SETTINGS (Public & Admin)
@@ -19,6 +20,14 @@ export const getPlatformSettings = async (req, res) => {
     }
     if (!settings.subscriptionExpiredTemplate) {
       settings.subscriptionExpiredTemplate = defaultInstance.subscriptionExpiredTemplate;
+      modified = true;
+    }
+    if (!settings.createStoreReminderTemplate) {
+      settings.createStoreReminderTemplate = DEFAULT_CREATE_STORE_REMINDER_TEMPLATE;
+      modified = true;
+    }
+    if (!settings.supportNotificationEmail) {
+      settings.supportNotificationEmail = "support@galibrand.cloud";
       modified = true;
     }
     if (modified) {
@@ -46,7 +55,9 @@ export const updatePlatformSettings = async (req, res) => {
       isCinEnabled,
       subscriptionInvoiceTemplate,
       subscriptionReminderTemplate,
-      subscriptionExpiredTemplate
+      subscriptionExpiredTemplate,
+      supportNotificationEmail,
+      createStoreReminderTemplate
     } = req.body;
 
     const updateData = {

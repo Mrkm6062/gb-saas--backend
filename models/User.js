@@ -30,6 +30,22 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null
     },
+    signupNotified: {
+      type: Boolean,
+      default: false
+    },
+    storeNotCreatedAlertSent: {
+      type: Boolean,
+      default: false
+    },
+    storeReminderSentAt: {
+      type: Date,
+      default: null
+    },
+    storeReminderCount: {
+      type: Number,
+      default: 0
+    },
   },
   { timestamps: true }
 );

@@ -1,3 +1,4 @@
+import { sendNewUserSignupAlert } from "../services/platformNotificationService.js";
 import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
 import Store from "../models/Store.js";
@@ -92,6 +93,11 @@ export const googleAuth = async (req, res) => {
         googleId: googleUserId,
         avatar: picture || "",
         provider: "google",
+        signupNotified: true
+      });
+
+      sendNewUserSignupAlert(user).catch(err => {
+        console.error("[Notification] Error sending Google signup alert:", err.message);
       });
     }
 

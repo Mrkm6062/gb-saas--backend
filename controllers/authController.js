@@ -1,3 +1,4 @@
+import { sendNewUserSignupAlert } from "../services/platformNotificationService.js";
 import User from "../models/User.js";
 import Store from "../models/Store.js";
 import generateToken from "../utils/generateToken.js";

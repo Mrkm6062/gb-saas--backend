@@ -1,3 +1,4 @@
+import { sendNewStoreCreatedAlert } from "../services/platformNotificationService.js";
 import Store from "../models/Store.js";
 import Counter from "../models/Counter.js";
 import Plan from "../models/Plan.js";

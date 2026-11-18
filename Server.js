@@ -1,3 +1,4 @@
+import { start24HourNoStoreCheckCron } from "./services/platformNotificationService.js";
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
@@ -86,6 +87,7 @@ const app = express();
 
 // Initialize scheduled cron jobs
 startSubscriptionReminderCron();
+start24HourNoStoreCheckCron();
 startCleanupDeletedStoresCron();
 startCleanupCustomImagesCron();
 

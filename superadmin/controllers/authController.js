@@ -187,7 +187,27 @@ export const getDashboardData = async (req, res) => {
       };
     }));
     
-    res.json({ users, stores: storesWithDomains });
+    // Map stores to owners to know which users have created stores
+    const activeStores = stores.filter(s => !s.isDeleted);
+    const storeOwnerMap = new Map();
+    activeStores.forEach(s => {
+      if (s.ownerId) {
+        const list = storeOwnerMap.get(String(s.ownerId)) || [];
+        list.push({ _id: s._id, storeId: s.storeId, storeName: s.storeName, status: s.status, subdomain: s.subdomain });
+        storeOwnerMap.set(String(s.ownerId), list);
+      }
+    });
+
+    const usersWithStoreInfo = users.map(u => {
+      const uObj = u.toObject();
+      const userStores = storeOwnerMap.get(String(u.userId)) || storeOwnerMap.get(String(u._id)) || [];
+      uObj.hasStore = userStores.length > 0;
+      uObj.storeCount = userStores.length;
+      uObj.stores = userStores;
+      return uObj;
+    });
+
+    res.json({ users: usersWithStoreInfo, stores: storesWithDomains });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
