@@ -717,7 +717,7 @@ export const getCustomerOrders = async (req, res) => {
 export const getPublicOrder = async (req, res) => {
   try {
     const { id } = req.params;
-    const order = await Order.findById(id).populate('store', 'name websiteTitle logo favicon');
+    const order = await Order.findById(id).populate('store', 'name storeName websiteTitle logo favicon locationAddress storePhone whatsappNumber storeId subdomain customDomain');
     if (!order) return res.status(404).json({ message: "Order not found" });
 
     // Return only safe, non-sensitive data
