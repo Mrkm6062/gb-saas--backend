@@ -91,7 +91,10 @@ export const checkIsStoreOpen = async (storeId) => {
       if (holidayMatch.slots && holidayMatch.slots.length > 0) {
         const currentMinutes = timeToMinutes(timeStr);
         const inSlot = holidayMatch.slots.some(slot => {
-          return currentMinutes >= timeToMinutes(slot.open) && currentMinutes <= timeToMinutes(slot.close);
+          const openMin = timeToMinutes(slot.open);
+          const closeMin = timeToMinutes(slot.close);
+          if (closeMin < openMin) return currentMinutes >= openMin || currentMinutes <= closeMin;
+          return currentMinutes >= openMin && currentMinutes <= closeMin;
         });
         if (!inSlot) {
           return { isOpen: false, reason: `Closed (Holiday Hours: ${holidayMatch.name})` };
@@ -114,7 +117,10 @@ export const checkIsStoreOpen = async (storeId) => {
       if (specialMatch.slots && specialMatch.slots.length > 0) {
         const currentMinutes = timeToMinutes(timeStr);
         const inSlot = specialMatch.slots.some(slot => {
-          return currentMinutes >= timeToMinutes(slot.open) && currentMinutes <= timeToMinutes(slot.close);
+          const openMin = timeToMinutes(slot.open);
+          const closeMin = timeToMinutes(slot.close);
+          if (closeMin < openMin) return currentMinutes >= openMin || currentMinutes <= closeMin;
+          return currentMinutes >= openMin && currentMinutes <= closeMin;
         });
         if (!inSlot) {
           return { isOpen: false, reason: `Closed (Special Hours: ${specialMatch.title})` };
@@ -138,7 +144,10 @@ export const checkIsStoreOpen = async (storeId) => {
     if (daySchedule.slots && daySchedule.slots.length > 0) {
       const currentMinutes = timeToMinutes(timeStr);
       const inSlot = daySchedule.slots.some(slot => {
-        return currentMinutes >= timeToMinutes(slot.open) && currentMinutes <= timeToMinutes(slot.close);
+        const openMin = timeToMinutes(slot.open);
+        const closeMin = timeToMinutes(slot.close);
+        if (closeMin < openMin) return currentMinutes >= openMin || currentMinutes <= closeMin;
+        return currentMinutes >= openMin && currentMinutes <= closeMin;
       });
       if (!inSlot) {
         return { isOpen: false, reason: "Store is currently closed" };
@@ -197,7 +206,10 @@ export const updateStoreHours = async (req, res) => {
 
     // Verify user authorization for this store
     const storeQuery = { _id: storeId };
-    if (req.user.role !== 'superadmin') storeQuery.ownerId = req.user.userId;
+    if (req.user.role !== 'superadmin') {
+      const possibleOwnerIds = [req.user.userId, req.user._id, String(req.user._id)].filter(Boolean);
+      storeQuery.ownerId = { $in: possibleOwnerIds };
+    }
     const store = await Store.findOne(storeQuery);
     if (!store) {
       return res.status(403).json({ message: "Not authorized to update store hours for this store." });
@@ -205,8 +217,19 @@ export const updateStoreHours = async (req, res) => {
 
     const updated = await StoreHours.findOneAndUpdate(
       { storeId },
-      { mode, timezone, weeklySchedule, holidays, specialHours, temporaryClosure, displayStoreStatus },
-      { new: true, upsert: true }
+      { 
+        $set: {
+          storeId,
+          mode: mode || "24x7",
+          timezone: timezone || "Asia/Kolkata",
+          weeklySchedule: Array.isArray(weeklySchedule) ? weeklySchedule : [],
+          holidays: Array.isArray(holidays) ? holidays : [],
+          specialHours: Array.isArray(specialHours) ? specialHours : [],
+          temporaryClosure: temporaryClosure || { enabled: false, reason: "" },
+          displayStoreStatus: displayStoreStatus !== undefined ? displayStoreStatus : true
+        }
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
     res.json(updated);

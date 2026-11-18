@@ -7,5 +7,6 @@ const router = express.Router();
 router.get("/public/status", getPublicStoreStatus);
 router.get("/", getStoreHours);
 router.put("/", protect, updateStoreHours);
+router.post("/", protect, updateStoreHours);
 
 export default router;
